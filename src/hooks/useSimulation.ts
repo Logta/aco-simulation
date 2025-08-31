@@ -22,6 +22,7 @@ export const useSimulation = () => {
     updateAnt,
     updatePheromone,
     removeFood,
+    updateFood,
   } = useSimulationStore()
 
   const updateAntBehavior = (ant: Ant) => {
@@ -85,8 +86,13 @@ export const useSimulation = () => {
           updateAnt(ant.id, { hasFood: true, targetFood: nearestFood.id })
           
           const updatedFood = foods.find(f => f.id === nearestFood.id)
-          if (updatedFood && updatedFood.amount <= 10) {
-            removeFood(nearestFood.id)
+          if (updatedFood) {
+            const newAmount = updatedFood.amount - 1
+            if (newAmount <= 0) {
+              removeFood(nearestFood.id)
+            } else {
+              updateFood(nearestFood.id, { amount: newAmount })
+            }
           }
           
           const newPheromones = depositPheromone(

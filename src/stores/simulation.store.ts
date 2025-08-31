@@ -25,6 +25,7 @@ type SimulationActions = {
   setPheromoneDepositAmount: (amount: number) => void
   addFood: (position: Position) => void
   removeFood: (id: string) => void
+  updateFood: (id: string, updates: Partial<Food>) => void
   addRandomFoods: (count: number) => void
   updateAnt: (id: string, updates: Partial<Ant>) => void
   updatePheromone: (key: string, pheromone: Pheromone) => void
@@ -98,6 +99,14 @@ export const useSimulationStore = create<SimulationState & SimulationActions>()(
       removeFood: (id) => {
         set((state) => ({
           foods: state.foods.filter((f) => f.id !== id),
+        }))
+      },
+
+      updateFood: (id, updates) => {
+        set((state) => ({
+          foods: state.foods.map((food) =>
+            food.id === id ? { ...food, ...updates } : food
+          ),
         }))
       },
 

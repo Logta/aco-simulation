@@ -129,10 +129,15 @@ export const useOptimizedSimulation = () => {
           updates.hasFood = true
           updates.targetFood = nearestFood.id
           
-          // Queue food removal
+          // Queue food update or removal
           const updatedFood = foods.find(f => f.id === nearestFood.id)
-          if (updatedFood && updatedFood.amount <= 10) {
-            setTimeout(() => store.removeFood(nearestFood.id), 0)
+          if (updatedFood) {
+            const newAmount = updatedFood.amount - 1
+            if (newAmount <= 0) {
+              setTimeout(() => store.removeFood(nearestFood.id), 0)
+            } else {
+              setTimeout(() => store.updateFood(nearestFood.id, { amount: newAmount }), 0)
+            }
           }
           
           const newPheromones = depositPheromone(

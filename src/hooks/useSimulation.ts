@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useSimulationStore } from '@/stores/simulation.store'
-import { moveAnt, moveTowardsTarget, followPheromone, torusDistance } from '@/lib/aco/ant'
+import { moveAnt, moveTowardsTarget, moveWithBias, followPheromone, avoidCollisions, torusDistance } from '@/lib/aco/ant'
 import { depositPheromone, decayPheromones } from '@/lib/aco/pheromone'
 import type { Ant, Food, Pheromone } from '@/lib/aco/types'
 
@@ -19,6 +19,7 @@ export const useSimulation = () => {
     worldHeight,
     pheromoneDecayRate,
     pheromoneDepositAmount,
+    pheromoneTrackingStrength,
     updateAnt,
     updatePheromone,
     removeFood,
@@ -193,15 +194,7 @@ export const useSimulation = () => {
               pheromoneUpdates.set(key, pheromone)
             })
           } else {
-            const newDirection = followPheromone(
-              ant.position,
-              pheromones,
-              'toNest',
-              ant.direction,
-              worldWidth,
-              worldHeight
-            )
-            
+            // Move directly towards nest when carrying food
             const newPosition = moveTowardsTarget(
               ant.position,
               nest,
@@ -209,6 +202,27 @@ export const useSimulation = () => {
               worldHeight,
               2
             )
+            
+            // Calculate direction to nest for proper orientation
+            const dx = nest.x - ant.position.x
+            const dy = nest.y - ant.position.y
+            const wrappedDx = dx > worldWidth / 2 ? dx - worldWidth :
+                              dx < -worldWidth / 2 ? dx + worldWidth : dx
+            const wrappedDy = dy > worldHeight / 2 ? dy - worldHeight :
+                              dy < -worldHeight / 2 ? dy + worldHeight : dy
+            let newDirection = Math.atan2(wrappedDy, wrappedDx)
+            
+            // Apply collision avoidance
+            const avoidanceResult = avoidCollisions(
+              newPosition,
+              newDirection,
+              ants,
+              ant.id,
+              worldWidth,
+              worldHeight,
+              6
+            )
+            newDirection = avoidanceResult.direction
             
             antUpdates.push({ id: ant.id, updates: { position: newPosition, direction: newDirection } })
             
@@ -223,19 +237,27 @@ export const useSimulation = () => {
             })
           }
         } else {
-          if (nearestFood) {
-            const distanceToFood = torusDistance(ant.position, nearestFood.position, worldWidth, worldHeight)
+          // Check if ant can see nearby food (within detection range)
+          const detectionRange = 20
+          const nearbyFood = foods.find(food => {
+            const distance = torusDistance(ant.position, food.position, worldWidth, worldHeight)
+            return distance <= detectionRange
+          })
+          
+          if (nearbyFood) {
+            const distanceToFood = torusDistance(ant.position, nearbyFood.position, worldWidth, worldHeight)
             
             if (distanceToFood < 10) {
-              antUpdates.push({ id: ant.id, updates: { hasFood: true, targetFood: nearestFood.id } })
+              // Collect food
+              antUpdates.push({ id: ant.id, updates: { hasFood: true, targetFood: nearbyFood.id } })
               
-              const updatedFood = foods.find(f => f.id === nearestFood.id)
+              const updatedFood = foods.find(f => f.id === nearbyFood.id)
               if (updatedFood) {
                 const newAmount = updatedFood.amount - 1
                 if (newAmount <= 0) {
-                  foodsToRemove.push(nearestFood.id)
+                  foodsToRemove.push(nearbyFood.id)
                 } else {
-                  foodUpdates.push({ id: nearestFood.id, updates: { amount: newAmount } })
+                  foodUpdates.push({ id: nearbyFood.id, updates: { amount: newAmount } })
                 }
               }
               
@@ -249,50 +271,87 @@ export const useSimulation = () => {
                 pheromoneUpdates.set(key, pheromone)
               })
             } else {
-              const newDirection = followPheromone(
+              // Move towards nearby food with some randomness
+              const { position, direction: tempDirection } = moveWithBias(
                 ant.position,
-                pheromones,
-                'toFood',
                 ant.direction,
+                nearbyFood.position,
+                worldWidth,
+                worldHeight,
+                0.4,
+                2
+              )
+              
+              // Apply collision avoidance
+              const avoidanceResult = avoidCollisions(
+                position,
+                tempDirection,
+                ants,
+                ant.id,
                 worldWidth,
                 worldHeight
               )
+              const direction = avoidanceResult.direction
+              const finalPosition = avoidanceResult.position
               
-              const shouldFollowPheromone = Math.random() < 0.7
-              const { position, direction } = shouldFollowPheromone && pheromones.size > 0
-                ? {
-                    position: moveTowardsTarget(
-                      ant.position,
-                      nearestFood.position,
-                      worldWidth,
-                      worldHeight,
-                      2
-                    ),
-                    direction: newDirection,
-                  }
-                : moveAnt(ant.position, ant.direction, worldWidth, worldHeight, 2)
-              
-              antUpdates.push({ id: ant.id, updates: { position, direction } })
+              antUpdates.push({ id: ant.id, updates: { position: finalPosition, direction } })
               
               const newPheromones = depositPheromone(
                 pheromones,
                 ant.position,
                 'toNest',
-                pheromoneDepositAmount * 0.5
+                pheromoneDepositAmount * 0.3
               )
               newPheromones.forEach((pheromone, key) => {
                 pheromoneUpdates.set(key, pheromone)
               })
             }
           } else {
-            const { position, direction } = moveAnt(
+            // No food nearby - follow pheromones or random walk
+            const newDirection = followPheromone(
               ant.position,
+              pheromones,
+              'toFood',
               ant.direction,
               worldWidth,
-              worldHeight,
-              2
+              worldHeight
             )
-            antUpdates.push({ id: ant.id, updates: { position, direction } })
+            
+            const shouldFollowPheromone = Math.random() < pheromoneTrackingStrength && pheromones.size > 0
+            
+            // Check if pheromone direction is significantly different from current direction
+            const directionDiff = Math.abs(newDirection - ant.direction)
+            const normalizedDiff = Math.min(directionDiff, 2 * Math.PI - directionDiff)
+            const hasValidPheromone = normalizedDiff > 0.1 // Only follow if direction change is meaningful
+            
+            const { position, direction: tempDirection } = shouldFollowPheromone && hasValidPheromone
+              ? moveAnt(ant.position, newDirection, worldWidth, worldHeight, 2)
+              : moveAnt(ant.position, ant.direction, worldWidth, worldHeight, 2)
+            
+            // Apply collision avoidance
+            const avoidanceResult = avoidCollisions(
+              position,
+              tempDirection,
+              ants,
+              ant.id,
+              worldWidth,
+              worldHeight
+            )
+            const direction = avoidanceResult.direction
+            const finalPosition = avoidanceResult.position
+            
+            antUpdates.push({ id: ant.id, updates: { position: finalPosition, direction } })
+            
+            // Deposit weak nest pheromone while exploring
+            const newPheromones = depositPheromone(
+              pheromones,
+              ant.position,
+              'toNest',
+              pheromoneDepositAmount * 0.1
+            )
+            newPheromones.forEach((pheromone, key) => {
+              pheromoneUpdates.set(key, pheromone)
+            })
           }
         }
       })

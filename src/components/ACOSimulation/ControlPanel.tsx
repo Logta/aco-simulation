@@ -11,11 +11,13 @@ export const ControlPanel = () => {
     antCount,
     pheromoneDecayRate,
     pheromoneDepositAmount,
+    pheromoneTrackingStrength,
     toggleSimulation,
     setSpeed,
     setAntCount,
     setPheromoneDecayRate,
     setPheromoneDepositAmount,
+    setPheromoneTrackingStrength,
     addRandomFoods,
     reset,
   } = useSimulationStore()
@@ -122,6 +124,21 @@ export const ControlPanel = () => {
             min={0.1}
             max={5}
             step={0.1}
+          />
+        </div>
+
+        <div>
+          <Label htmlFor="trackingStrength" className="flex justify-between mb-2">
+            <span>フェロモン追跡強度</span>
+            <span className="text-gray-600">{(pheromoneTrackingStrength * 100).toFixed(0)}%</span>
+          </Label>
+          <Slider
+            id="trackingStrength"
+            value={[pheromoneTrackingStrength]}
+            onValueChange={(value) => setPheromoneTrackingStrength(value[0])}
+            min={0}
+            max={1}
+            step={0.05}
           />
         </div>
       </div>

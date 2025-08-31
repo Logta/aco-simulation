@@ -12,6 +12,7 @@ type SimulationState = {
   antCount: number
   pheromoneDecayRate: number
   pheromoneDepositAmount: number
+  pheromoneTrackingStrength: number
   worldWidth: number
   worldHeight: number
 }
@@ -23,6 +24,7 @@ type SimulationActions = {
   setAntCount: (count: number) => void
   setPheromoneDecayRate: (rate: number) => void
   setPheromoneDepositAmount: (amount: number) => void
+  setPheromoneTrackingStrength: (strength: number) => void
   addFood: (position: Position) => void
   removeFood: (id: string) => void
   updateFood: (id: string, updates: Partial<Food>) => void
@@ -45,6 +47,7 @@ export const useSimulationStore = create<SimulationState & SimulationActions>()(
       antCount: 50,
       pheromoneDecayRate: 0.99,
       pheromoneDepositAmount: 1,
+      pheromoneTrackingStrength: 0.7,
       worldWidth: 800,
       worldHeight: 600,
 
@@ -87,6 +90,10 @@ export const useSimulationStore = create<SimulationState & SimulationActions>()(
 
       setPheromoneDepositAmount: (amount) => {
         set({ pheromoneDepositAmount: amount })
+      },
+
+      setPheromoneTrackingStrength: (strength) => {
+        set({ pheromoneTrackingStrength: strength })
       },
 
       addFood: (position) => {

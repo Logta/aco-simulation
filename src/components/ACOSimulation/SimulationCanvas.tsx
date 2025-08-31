@@ -24,17 +24,39 @@ export const SimulationCanvas = ({ width, height }: SimulationCanvasProps) => {
   }
 
   const drawPheromones = useCallback((ctx: CanvasRenderingContext2D) => {
-    pheromones.forEach((pheromone) => {
-      const alpha = Math.min(pheromone.intensity / 100, 0.5)
-      ctx.fillStyle = pheromone.type === 'toFood' 
-        ? `rgba(0, 255, 0, ${alpha})`
-        : `rgba(0, 100, 255, ${alpha})`
-      ctx.fillRect(
-        pheromone.position.x - 5,
-        pheromone.position.y - 5,
-        10,
-        10
+    // Sort pheromones by intensity to draw weaker ones first
+    const sortedPheromones = Array.from(pheromones.values()).sort((a, b) => a.intensity - b.intensity)
+    
+    sortedPheromones.forEach((pheromone) => {
+      const intensity = Math.min(pheromone.intensity / 100, 1)
+      if (intensity < 0.05) return // Skip very weak pheromones
+      
+      const radius = 12 + intensity * 15
+      
+      // Create radial gradient for better visibility
+      const gradient = ctx.createRadialGradient(
+        pheromone.position.x, pheromone.position.y, 0,
+        pheromone.position.x, pheromone.position.y, radius
       )
+      
+      if (pheromone.type === 'toFood') {
+        // Bright green for food trail
+        gradient.addColorStop(0, `rgba(0, 255, 0, ${intensity})`)
+        gradient.addColorStop(0.3, `rgba(0, 220, 0, ${intensity * 0.6})`)
+        gradient.addColorStop(0.6, `rgba(0, 180, 0, ${intensity * 0.3})`)
+        gradient.addColorStop(1, 'rgba(0, 100, 0, 0)')
+      } else {
+        // Bright blue for nest trail
+        gradient.addColorStop(0, `rgba(0, 150, 255, ${intensity})`)
+        gradient.addColorStop(0.3, `rgba(0, 100, 220, ${intensity * 0.6})`)
+        gradient.addColorStop(0.6, `rgba(0, 50, 180, ${intensity * 0.3})`)
+        gradient.addColorStop(1, 'rgba(0, 0, 100, 0)')
+      }
+      
+      ctx.fillStyle = gradient
+      ctx.beginPath()
+      ctx.arc(pheromone.position.x, pheromone.position.y, radius, 0, Math.PI * 2)
+      ctx.fill()
     })
   }, [pheromones])
 
@@ -47,9 +69,9 @@ export const SimulationCanvas = ({ width, height }: SimulationCanvasProps) => {
 
   const drawAnts = useCallback((ctx: CanvasRenderingContext2D) => {
     ants.forEach((ant) => {
-      drawCircle(ctx, ant.position, 3, ant.hasFood ? '#FF0000' : '#000000')
+      drawCircle(ctx, ant.position, 3, ant.hasFood ? '#FF6B6B' : '#FFFFFF')
       
-      ctx.strokeStyle = '#666666'
+      ctx.strokeStyle = ant.hasFood ? '#FFB6B6' : '#CCCCCC'
       ctx.lineWidth = 1
       ctx.beginPath()
       ctx.moveTo(ant.position.x, ant.position.y)
@@ -62,9 +84,9 @@ export const SimulationCanvas = ({ width, height }: SimulationCanvasProps) => {
   }, [ants])
 
   const drawNest = useCallback((ctx: CanvasRenderingContext2D) => {
-    drawCircle(ctx, nest, 15, '#8B4513')
-    ctx.strokeStyle = '#654321'
-    ctx.lineWidth = 2
+    drawCircle(ctx, nest, 15, '#D2691E')
+    ctx.strokeStyle = '#FF8C00'
+    ctx.lineWidth = 3
     ctx.beginPath()
     ctx.arc(nest.x, nest.y, 15, 0, Math.PI * 2)
     ctx.stroke()
@@ -79,7 +101,8 @@ export const SimulationCanvas = ({ width, height }: SimulationCanvasProps) => {
 
     ctx.clearRect(0, 0, width, height)
     
-    ctx.fillStyle = '#F5F5DC'
+    // Darker background for better pheromone visibility
+    ctx.fillStyle = '#2a2a2a'
     ctx.fillRect(0, 0, width, height)
 
     drawPheromones(ctx)

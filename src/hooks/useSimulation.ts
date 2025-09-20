@@ -5,8 +5,9 @@ import { depositPheromone, decayPheromones } from '@/lib/aco/pheromone'
 import type { Ant, Food, Pheromone } from '@/lib/aco/types'
 
 export const useSimulation = () => {
-  const animationFrameRef = useRef<number>()
+  const animationFrameRef = useRef<number>(0)
   const lastTimeRef = useRef<number>(0)
+  const lastDecayTimeRef = useRef<number>(0)
   
   const {
     isRunning,
@@ -20,139 +21,7 @@ export const useSimulation = () => {
     pheromoneDecayRate,
     pheromoneDepositAmount,
     pheromoneTrackingStrength,
-    updateAnt,
-    updatePheromone,
-    removeFood,
-    updateFood,
   } = useSimulationStore()
-
-  const updateAntBehavior = (ant: Ant) => {
-    const nearestFood = foods.reduce<Food | null>((nearest, food) => {
-      const distance = torusDistance(ant.position, food.position, worldWidth, worldHeight)
-      if (!nearest) return food
-      const nearestDistance = torusDistance(ant.position, nearest.position, worldWidth, worldHeight)
-      return distance < nearestDistance ? food : nearest
-    }, null)
-
-    if (ant.hasFood) {
-      const distanceToNest = torusDistance(ant.position, nest, worldWidth, worldHeight)
-      
-      if (distanceToNest < 10) {
-        updateAnt(ant.id, { hasFood: false, targetFood: null })
-        
-        const newPheromones = depositPheromone(
-          pheromones,
-          ant.position,
-          'toNest',
-          pheromoneDepositAmount * 5
-        )
-        newPheromones.forEach((pheromone, key) => {
-          updatePheromone(key, pheromone)
-        })
-      } else {
-        const newDirection = followPheromone(
-          ant.position,
-          pheromones,
-          'toNest',
-          ant.direction,
-          worldWidth,
-          worldHeight
-        )
-        
-        const newPosition = moveTowardsTarget(
-          ant.position,
-          nest,
-          worldWidth,
-          worldHeight,
-          2
-        )
-        
-        updateAnt(ant.id, { position: newPosition, direction: newDirection })
-        
-        const newPheromones = depositPheromone(
-          pheromones,
-          ant.position,
-          'toFood',
-          pheromoneDepositAmount
-        )
-        newPheromones.forEach((pheromone, key) => {
-          updatePheromone(key, pheromone)
-        })
-      }
-    } else {
-      if (nearestFood) {
-        const distanceToFood = torusDistance(ant.position, nearestFood.position, worldWidth, worldHeight)
-        
-        if (distanceToFood < 10) {
-          updateAnt(ant.id, { hasFood: true, targetFood: nearestFood.id })
-          
-          const updatedFood = foods.find(f => f.id === nearestFood.id)
-          if (updatedFood) {
-            const newAmount = updatedFood.amount - 1
-            if (newAmount <= 0) {
-              removeFood(nearestFood.id)
-            } else {
-              updateFood(nearestFood.id, { amount: newAmount })
-            }
-          }
-          
-          const newPheromones = depositPheromone(
-            pheromones,
-            ant.position,
-            'toFood',
-            pheromoneDepositAmount * 5
-          )
-          newPheromones.forEach((pheromone, key) => {
-            updatePheromone(key, pheromone)
-          })
-        } else {
-          const newDirection = followPheromone(
-            ant.position,
-            pheromones,
-            'toFood',
-            ant.direction,
-            worldWidth,
-            worldHeight
-          )
-          
-          const shouldFollowPheromone = Math.random() < 0.7
-          const { position, direction } = shouldFollowPheromone && pheromones.size > 0
-            ? {
-                position: moveTowardsTarget(
-                  ant.position,
-                  nearestFood.position,
-                  worldWidth,
-                  worldHeight,
-                  2
-                ),
-                direction: newDirection,
-              }
-            : moveAnt(ant.position, ant.direction, worldWidth, worldHeight, 2)
-          
-          updateAnt(ant.id, { position, direction })
-          
-          const newPheromones = depositPheromone(
-            pheromones,
-            ant.position,
-            'toNest',
-            pheromoneDepositAmount * 0.5
-          )
-          newPheromones.forEach((pheromone, key) => {
-            updatePheromone(key, pheromone)
-          })
-        }
-      } else {
-        const { position, direction } = moveAnt(
-          ant.position,
-          ant.direction,
-          worldWidth,
-          worldHeight,
-          2
-        )
-        updateAnt(ant.id, { position, direction })
-      }
-    }
-  }
 
   const animate = (currentTime: number) => {
     if (!isRunning) {
@@ -171,28 +40,13 @@ export const useSimulation = () => {
       const foodsToRemove: string[] = []
       
       ants.forEach(ant => {
-        const nearestFood = foods.reduce<Food | null>((nearest, food) => {
-          const distance = torusDistance(ant.position, food.position, worldWidth, worldHeight)
-          if (!nearest) return food
-          const nearestDistance = torusDistance(ant.position, nearest.position, worldWidth, worldHeight)
-          return distance < nearestDistance ? food : nearest
-        }, null)
 
         if (ant.hasFood) {
           const distanceToNest = torusDistance(ant.position, nest, worldWidth, worldHeight)
           
           if (distanceToNest < 10) {
-            antUpdates.push({ id: ant.id, updates: { hasFood: false, targetFood: null } })
-            
-            const newPheromones = depositPheromone(
-              pheromones,
-              ant.position,
-              'toNest',
-              pheromoneDepositAmount * 5
-            )
-            newPheromones.forEach((pheromone, key) => {
-              pheromoneUpdates.set(key, pheromone)
-            })
+            // Arrived at nest - drop food
+            antUpdates.push({ id: ant.id, updates: { hasFood: false, targetFood: null, foodAmount: null } })
           } else {
             // Move directly towards nest when carrying food
             const newPosition = moveTowardsTarget(
@@ -226,11 +80,14 @@ export const useSimulation = () => {
             
             antUpdates.push({ id: ant.id, updates: { position: newPosition, direction: newDirection } })
             
+            // Deposit pheromone while carrying food (constant rate based on food value)
+            // Realistic: ants deposit continuously while returning, amount depends on food quality
+            const foodQualityMultiplier = ant.foodAmount ? 1 + Math.min(ant.foodAmount / 30, 2) : 1
             const newPheromones = depositPheromone(
               pheromones,
               ant.position,
               'toFood',
-              pheromoneDepositAmount
+              pheromoneDepositAmount * foodQualityMultiplier
             )
             newPheromones.forEach((pheromone, key) => {
               pheromoneUpdates.set(key, pheromone)
@@ -249,7 +106,7 @@ export const useSimulation = () => {
             
             if (distanceToFood < 10) {
               // Collect food
-              antUpdates.push({ id: ant.id, updates: { hasFood: true, targetFood: nearbyFood.id } })
+              antUpdates.push({ id: ant.id, updates: { hasFood: true, targetFood: nearbyFood.id, foodAmount: nearbyFood.amount } })
               
               const updatedFood = foods.find(f => f.id === nearbyFood.id)
               if (updatedFood) {
@@ -261,15 +118,8 @@ export const useSimulation = () => {
                 }
               }
               
-              const newPheromones = depositPheromone(
-                pheromones,
-                ant.position,
-                'toFood',
-                pheromoneDepositAmount * 5
-              )
-              newPheromones.forEach((pheromone, key) => {
-                pheromoneUpdates.set(key, pheromone)
-              })
+              // Realistic: No pheromone when just finding food
+              // Ants only deposit on the way back
             } else {
               // Move towards nearby food with some randomness
               const { position, direction: tempDirection } = moveWithBias(
@@ -296,15 +146,7 @@ export const useSimulation = () => {
               
               antUpdates.push({ id: ant.id, updates: { position: finalPosition, direction } })
               
-              const newPheromones = depositPheromone(
-                pheromones,
-                ant.position,
-                'toNest',
-                pheromoneDepositAmount * 0.3
-              )
-              newPheromones.forEach((pheromone, key) => {
-                pheromoneUpdates.set(key, pheromone)
-              })
+              // Realistic: No pheromone when just searching
             }
           } else {
             // No food nearby - follow pheromones or random walk
@@ -342,16 +184,7 @@ export const useSimulation = () => {
             
             antUpdates.push({ id: ant.id, updates: { position: finalPosition, direction } })
             
-            // Deposit weak nest pheromone while exploring
-            const newPheromones = depositPheromone(
-              pheromones,
-              ant.position,
-              'toNest',
-              pheromoneDepositAmount * 0.1
-            )
-            newPheromones.forEach((pheromone, key) => {
-              pheromoneUpdates.set(key, pheromone)
-            })
+            // Realistic: No pheromone while exploring
           }
         }
       })
@@ -378,13 +211,17 @@ export const useSimulation = () => {
           newPheromones.set(key, pheromone)
         })
         
-        // Decay pheromones
-        const decayedPheromones = decayPheromones(newPheromones, pheromoneDecayRate)
+        // Decay pheromones only every 500ms (not every frame)
+        let finalPheromones = newPheromones
+        if (currentTime - lastDecayTimeRef.current > 500) {
+          finalPheromones = decayPheromones(newPheromones, pheromoneDecayRate)
+          lastDecayTimeRef.current = currentTime
+        }
         
         return {
           ants: newAnts,
           foods: newFoods,
-          pheromones: decayedPheromones
+          pheromones: finalPheromones
         }
       })
       

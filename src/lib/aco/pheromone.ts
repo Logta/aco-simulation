@@ -38,8 +38,30 @@ export const decayPheromones = (
   const newMap = new Map<string, Pheromone>()
   
   pheromones.forEach((pheromone, key) => {
-    const decayedIntensity = pheromone.intensity * decayRate
-    if (decayedIntensity > 0.01) {
+    // 対数関数的蒸発モデル
+    // 高濃度では多く蒸発し、低濃度では少なく蒸発する
+    // これにより、フェロモンが一定の濃度に収束しやすくなる
+    
+    // 対数関数による蒸発量の計算
+    // intensity が高いほど蒸発量が増える
+    const logFactor = Math.log10(pheromone.intensity + 1) / Math.log10(101) // 0〜1の範囲に正規化
+    
+    // decayRateパラメータを蒸発の強さとして使用
+    // decayRate = 0.9: 強い蒸発
+    // decayRate = 0.999: 弱い蒸発
+    const evaporationStrength = (1 - decayRate) * 10 // 0.01〜1.0の範囲
+    
+    // 対数的な蒸発量（高濃度ほど多く蒸発）
+    const logEvaporation = logFactor * evaporationStrength * pheromone.intensity
+    
+    // 最終的な蒸発計算（基本蒸発 + 対数的蒸発）
+    const baseEvaporation = 0.05 // 最小蒸発量
+    const totalEvaporation = baseEvaporation + logEvaporation
+    
+    const decayedIntensity = pheromone.intensity - totalEvaporation
+    
+    // しきい値
+    if (decayedIntensity > 0.1) {
       newMap.set(key, {
         ...pheromone,
         intensity: decayedIntensity,

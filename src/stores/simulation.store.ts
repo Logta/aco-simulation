@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
-import type { Position, Food, Ant, Pheromone, SimulationConfig } from '@/lib/aco/types'
+import type { Position, Food, Ant, Pheromone } from '@/lib/aco/types'
 
 type SimulationState = {
   ants: Ant[]
@@ -46,13 +46,13 @@ export const useSimulationStore = create<SimulationState & SimulationActions>()(
       speed: 1,
       antCount: 50,
       pheromoneDecayRate: 0.99,
-      pheromoneDepositAmount: 1,
+      pheromoneDepositAmount: 2,
       pheromoneTrackingStrength: 0.7,
       worldWidth: 800,
       worldHeight: 600,
 
       initializeSimulation: () => {
-        const { antCount, nest, worldWidth, worldHeight } = get()
+        const { antCount, nest } = get()
         const newAnts: Ant[] = []
         
         for (let i = 0; i < antCount; i++) {
@@ -62,6 +62,7 @@ export const useSimulationStore = create<SimulationState & SimulationActions>()(
             hasFood: false,
             targetFood: null,
             direction: Math.random() * Math.PI * 2,
+            foodAmount: null,
           })
         }
 

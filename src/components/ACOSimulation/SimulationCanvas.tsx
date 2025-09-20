@@ -15,7 +15,7 @@ export const SimulationCanvas = ({ width, height }: SimulationCanvasProps) => {
   const pheromoneCtxRef = useRef<OffscreenCanvasRenderingContext2D | null>(null)
   const staticCanvasRef = useRef<OffscreenCanvas | null>(null)
   const staticCtxRef = useRef<OffscreenCanvasRenderingContext2D | null>(null)
-  const animationFrameRef = useRef<number>()
+  const animationFrameRef = useRef<number>(0)
   const lastPheromoneUpdateRef = useRef<number>(0)
   
   const { ants, foods, pheromones, nest, addFood } = useSimulationStore()

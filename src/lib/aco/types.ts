@@ -17,6 +17,7 @@ export const AntSchema = z.object({
   hasFood: z.boolean(),
   targetFood: z.string().nullable(),
   direction: z.number(),
+  foodAmount: z.number().nullable(),
 })
 
 export const PheromoneSchema = z.object({
@@ -29,7 +30,7 @@ export const SimulationConfigSchema = z.object({
   worldWidth: z.number().positive(),
   worldHeight: z.number().positive(),
   antCount: z.number().int().min(1).max(100),
-  pheromoneDecayRate: z.number().min(0.9).max(1),
+  pheromoneDecayRate: z.number().min(0.9).max(0.999),
   pheromoneDepositAmount: z.number().min(0.1).max(10),
   speed: z.number().min(0.1).max(10),
 })

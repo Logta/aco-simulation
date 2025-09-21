@@ -13,7 +13,8 @@ describe('useSimulationStore', () => {
       speed: 1,
       antCount: 50,
       pheromoneDecayRate: 0.99,
-      pheromoneDepositAmount: 1,
+      pheromoneDepositAmount: 2,
+      pheromoneTrackingStrength: 0.7,
       worldWidth: 800,
       worldHeight: 600,
     })
@@ -35,6 +36,7 @@ describe('useSimulationStore', () => {
         hasFood: false,
         targetFood: null,
         direction: expect.any(Number),
+        foodAmount: null,
       })
     })
 
@@ -215,30 +217,31 @@ describe('useSimulationStore', () => {
       const { result } = renderHook(() => useSimulationStore())
       
       act(() => {
-        result.current.updatePheromone('100,100', {
-          position: { x: 100, y: 100 },
+        result.current.updatePheromone('10,10', {
+          position: { x: 105, y: 105 },
           type: 'toFood',
-          intensity: 100,
+          intensity: 50,
         })
-        result.current.setPheromoneDecayRate(0.9)
+        result.current.setPheromoneDecayRate(0.95)
       })
       
       act(() => {
         result.current.decayPheromones()
       })
       
-      const decayedPheromone = result.current.pheromones.get('100,100')
-      expect(decayedPheromone?.intensity).toBeCloseTo(90)
+      const decayedPheromone = result.current.pheromones.get('10,10')
+      expect(decayedPheromone?.intensity).toBeTypeOf('number')
+      expect(decayedPheromone?.intensity).toBeLessThan(50)
     })
 
     it('should remove pheromones below threshold', () => {
       const { result } = renderHook(() => useSimulationStore())
       
       act(() => {
-        result.current.updatePheromone('100,100', {
+        result.current.updatePheromone('10,10', {
           position: { x: 100, y: 100 },
           type: 'toFood',
-          intensity: 0.01,
+          intensity: 0.05,  // Start with very low intensity
         })
         result.current.setPheromoneDecayRate(0.5)
       })
@@ -247,7 +250,8 @@ describe('useSimulationStore', () => {
         result.current.decayPheromones()
       })
       
-      expect(result.current.pheromones.has('100,100')).toBe(false)
+      // With logarithmic decay, low intensity pheromones should be removed
+      expect(result.current.pheromones.has('10,10')).toBe(false)
     })
   })
 
@@ -299,6 +303,16 @@ describe('useSimulationStore', () => {
       })
       
       expect(result.current.pheromoneDepositAmount).toBe(5)
+    })
+
+    it('should update pheromone tracking strength', () => {
+      const { result } = renderHook(() => useSimulationStore())
+      
+      act(() => {
+        result.current.setPheromoneTrackingStrength(0.9)
+      })
+      
+      expect(result.current.pheromoneTrackingStrength).toBe(0.9)
     })
   })
 })

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
-import type { Position, Food, Ant, Pheromone } from '@/lib/aco/types'
+import type { Position, Food, Ant, Pheromone } from '../lib/aco/types'
+import { decayPheromones } from '../lib/aco/pheromone'
 
 type SimulationState = {
   ants: Ant[]
@@ -157,16 +158,7 @@ export const useSimulationStore = create<SimulationState & SimulationActions>()(
       decayPheromones: () => {
         const { pheromoneDecayRate } = get()
         set((state) => {
-          const newPheromones = new Map()
-          state.pheromones.forEach((pheromone, key) => {
-            const decayedIntensity = pheromone.intensity * pheromoneDecayRate
-            if (decayedIntensity > 0.01) {
-              newPheromones.set(key, {
-                ...pheromone,
-                intensity: decayedIntensity,
-              })
-            }
-          })
+          const newPheromones = decayPheromones(state.pheromones, pheromoneDecayRate)
           return { pheromones: newPheromones }
         })
       },

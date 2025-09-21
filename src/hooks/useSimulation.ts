@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react'
-import { useSimulationStore } from '@/stores/simulation.store'
-import { executeAntBehavior } from '@/lib/aco/ant-behavior'
-import { decayPheromones } from '@/lib/aco/pheromone'
-import type { Ant, Food, Pheromone, Position } from '@/lib/aco/types'
+import { useSimulationStore } from '../stores/simulation.store'
+import { executeAntBehavior } from '../lib/aco/ant-behavior'
+import { decayPheromones } from '../lib/aco/pheromone'
+import type { Ant, Food, Pheromone, Position } from '../lib/aco/types'
 
 // Configuration constants
 const FRAME_DELAY_MS = 50

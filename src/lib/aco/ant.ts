@@ -75,7 +75,7 @@ export const moveWithBias = (
   biasStrength: number = 0.3,
   speed: number = 2
 ): { position: Position; direction: number } => {
-  // Calculate direction to target
+  // 目標への方向を計算
   const dx = target.x - position.x
   const dy = target.y - position.y
   
@@ -86,14 +86,14 @@ export const moveWithBias = (
   
   const targetDirection = Math.atan2(wrappedDy, wrappedDx)
   
-  // Add random walk
+  // ランダムウォークを追加
   const randomTurn = (Math.random() - 0.5) * 0.8
   
-  // Blend current direction, target direction, and random walk
+  // 現在の方向、目標方向、ランダムウォークをブレンド
   const directionToTarget = targetDirection - direction
   let adjustedDirectionToTarget = directionToTarget
   
-  // Normalize angle difference
+  // 角度差を正規化
   if (adjustedDirectionToTarget > Math.PI) {
     adjustedDirectionToTarget -= 2 * Math.PI
   } else if (adjustedDirectionToTarget < -Math.PI) {
@@ -165,7 +165,7 @@ export const avoidCollisions = (
   const avoidanceStrength = Math.min(collisionCount * 0.5, 1)
   const directionDiff = avoidanceDirection - direction
   
-  // Normalize angle difference
+  // 角度差を正規化
   let normalizedDiff = directionDiff
   if (normalizedDiff > Math.PI) {
     normalizedDiff -= 2 * Math.PI

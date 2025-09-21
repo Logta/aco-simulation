@@ -1,14 +1,6 @@
 import { executeAntBehavior } from './ant-behavior'
 import { decayPheromones } from './pheromone'
-import type { Ant, Food, Pheromone, Position } from './types'
-
-export type SimulationConfig = {
-  worldWidth: number
-  worldHeight: number
-  pheromoneDecayRate: number
-  pheromoneDepositAmount: number
-  pheromoneTrackingStrength: number
-}
+import type { Ant, Food, Pheromone, Position, SimulationConfig } from './types'
 
 export type SimulationState = {
   ants: Ant[]

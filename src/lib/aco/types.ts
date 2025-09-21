@@ -32,6 +32,7 @@ export const SimulationConfigSchema = z.object({
   antCount: z.number().int().min(1).max(100),
   pheromoneDecayRate: z.number().min(0.9).max(0.999),
   pheromoneDepositAmount: z.number().min(0.1).max(10),
+  pheromoneTrackingStrength: z.number().min(0.1).max(1.0),
   speed: z.number().min(0.1).max(10),
 })
 

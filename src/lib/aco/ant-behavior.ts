@@ -2,35 +2,62 @@ import type { Ant, Food, Position, Pheromone } from './types'
 import { torusDistance, moveTowardsTarget, moveWithBias, moveAnt, followPheromone, avoidCollisions } from './ant'
 import { depositPheromone } from './pheromone'
 
+/**
+ * アリの行動実行に必要なコンテキスト情報
+ */
 type AntBehaviorContext = {
+  /** 対象のアリ */
   ant: Ant
+  /** 環境内の食べ物リスト */
   foods: Food[]
+  /** フェロモンマップ */
   pheromones: Map<string, Pheromone>
+  /** ネストの位置 */
   nest: Position
+  /** 世界の幅 */
   worldWidth: number
+  /** 世界の高さ */
   worldHeight: number
+  /** フェロモン放出量 */
   pheromoneDepositAmount: number
+  /** フェロモン追跡強度 */
   pheromoneTrackingStrength: number
+  /** 他のアリのリスト（衝突回避用） */
   ants: Ant[]
 }
 
+/**
+ * アリの行動実行の結果
+ */
 type AntBehaviorResult = {
+  /** アリの状態更新 */
   antUpdate?: Partial<Ant>
+  /** フェロモンの更新 */
   pheromoneUpdates: Map<string, Pheromone>
+  /** 食べ物の量更新 */
   foodUpdate?: { id: string; amount: number }
+  /** 削除する食べ物のID */
   removeFood?: string
 }
 
-// Constants
+/** 行動制御定数 */
+/** 食べ物の検出可能距離 */
 const FOOD_DETECTION_RANGE = 20
+/** 食べ物を収集可能な距離 */
 const FOOD_COLLECTION_RANGE = 10
+/** ネストに到達したと判定する距離 */
 const NEST_ARRIVAL_RANGE = 10
+/** 衝突回避を開始する距離 */
 const COLLISION_AVOIDANCE_RADIUS = 6
+/** アリの移動速度 */
 const ANT_SPEED = 2
+/** 食べ物に向かう際のバイアス強度 */
 const FOOD_APPROACH_BIAS = 0.4
 
 /**
- * Execute ant behavior based on its current state
+ * アリの現在の状態に基づいて行動を実行
+ * @param context 行動実行に必要なコンテキスト情報
+ * @returns 行動実行の結果
  */
 export const executeAntBehavior = (context: AntBehaviorContext): AntBehaviorResult => {
   const { ant } = context
@@ -47,7 +74,7 @@ const executeReturningBehavior = (context: AntBehaviorContext): AntBehaviorResul
   const distanceToNest = torusDistance(ant.position, nest, worldWidth, worldHeight)
   
   if (distanceToNest < NEST_ARRIVAL_RANGE) {
-    // Arrived at nest - deliver food
+    // ネストに到達 - 食べ物を配送
     return {
       antUpdate: { hasFood: false, targetFood: null, foodAmount: null },
       pheromoneUpdates: new Map()
@@ -128,8 +155,11 @@ const approachFood = (context: AntBehaviorContext, food: Food): AntBehaviorResul
     food.position,
     worldWidth,
     worldHeight,
-    FOOD_APPROACH_BIAS,
-    ANT_SPEED
+    { 
+      speed: ANT_SPEED, 
+      randomTurnRange: 0.8, 
+      biasStrength: FOOD_APPROACH_BIAS 
+    }
   )
   
   const avoidanceResult = avoidCollisions(
@@ -138,7 +168,8 @@ const approachFood = (context: AntBehaviorContext, food: Food): AntBehaviorResul
     ants,
     ant.id,
     worldWidth,
-    worldHeight
+    worldHeight,
+    { avoidanceRadius: COLLISION_AVOIDANCE_RADIUS, avoidanceStrength: 0.5 }
   )
   
   return {
@@ -166,8 +197,8 @@ const executeExploration = (context: AntBehaviorContext): AntBehaviorResult => {
   const shouldFollow = shouldFollowPheromone(context, pheromoneDirection)
   
   const { position, direction: tempDirection } = shouldFollow
-    ? moveAnt(ant.position, pheromoneDirection, worldWidth, worldHeight, ANT_SPEED)
-    : moveAnt(ant.position, ant.direction, worldWidth, worldHeight, ANT_SPEED)
+    ? moveAnt(ant.position, pheromoneDirection, worldWidth, worldHeight, { speed: ANT_SPEED, randomTurnRange: 0.5 })
+    : moveAnt(ant.position, ant.direction, worldWidth, worldHeight, { speed: ANT_SPEED, randomTurnRange: 0.5 })
   
   const avoidanceResult = avoidCollisions(
     position,
@@ -175,7 +206,8 @@ const executeExploration = (context: AntBehaviorContext): AntBehaviorResult => {
     ants,
     ant.id,
     worldWidth,
-    worldHeight
+    worldHeight,
+    { avoidanceRadius: COLLISION_AVOIDANCE_RADIUS, avoidanceStrength: 0.5 }
   )
   
   return {
@@ -214,7 +246,7 @@ const moveTowardsNest = (context: AntBehaviorContext): Partial<Ant> => {
     ant.id,
     worldWidth,
     worldHeight,
-    COLLISION_AVOIDANCE_RADIUS
+    { avoidanceRadius: COLLISION_AVOIDANCE_RADIUS, avoidanceStrength: 0.5 }
   )
   
   return { 

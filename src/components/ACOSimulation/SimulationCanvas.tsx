@@ -20,17 +20,45 @@ export const SimulationCanvas = ({ width, height }: SimulationCanvasProps) => {
   
   const { ants, foods, pheromones, nest, addFood } = useSimulationStore()
 
-  // Initialize offscreen canvases
+  // オフスクリーンキャンバスの初期化（エラーハンドリング付き）
   useEffect(() => {
-    if (typeof OffscreenCanvas !== 'undefined') {
-      offscreenCanvasRef.current = new OffscreenCanvas(width, height)
-      offscreenCtxRef.current = offscreenCanvasRef.current.getContext('2d')
+    try {
+      if (typeof OffscreenCanvas !== 'undefined') {
+        offscreenCanvasRef.current = new OffscreenCanvas(width, height)
+        const offscreenCtx = offscreenCanvasRef.current.getContext('2d')
+        
+        if (!offscreenCtx) {
+          throw new Error('オフスクリーンキャンバスの2Dコンテキストを取得できませんでした')
+        }
+        offscreenCtxRef.current = offscreenCtx
+        
+        pheromoneCanvasRef.current = new OffscreenCanvas(width, height)
+        const pheromoneCtx = pheromoneCanvasRef.current.getContext('2d')
+        
+        if (!pheromoneCtx) {
+          throw new Error('フェロモンキャンバスの2Dコンテキストを取得できませんでした')
+        }
+        pheromoneCtxRef.current = pheromoneCtx
       
-      pheromoneCanvasRef.current = new OffscreenCanvas(width, height)
-      pheromoneCtxRef.current = pheromoneCanvasRef.current.getContext('2d')
-      
-      staticCanvasRef.current = new OffscreenCanvas(width, height)
-      staticCtxRef.current = staticCanvasRef.current.getContext('2d')
+        staticCanvasRef.current = new OffscreenCanvas(width, height)
+        const staticCtx = staticCanvasRef.current.getContext('2d')
+        
+        if (!staticCtx) {
+          throw new Error('静的キャンバスの2Dコンテキストを取得できませんでした')
+        }
+        staticCtxRef.current = staticCtx
+      } else {
+        console.warn('OffscreenCanvasがサポートされていません。フォールバック実装を使用します。')
+      }
+    } catch (error) {
+      console.error('キャンバスの初期化中にエラーが発生しました:', error)
+      // フォールバック: オフスクリーンキャンバスなしで動作
+      offscreenCanvasRef.current = null
+      offscreenCtxRef.current = null
+      pheromoneCanvasRef.current = null
+      pheromoneCtxRef.current = null
+      staticCanvasRef.current = null
+      staticCtxRef.current = null
     }
   }, [width, height])
 

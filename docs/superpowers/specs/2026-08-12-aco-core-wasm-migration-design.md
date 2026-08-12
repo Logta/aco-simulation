@@ -2,6 +2,7 @@
 
 - 作成日: 2026-08-12
 - ステータス: 承認済み(実装計画へ移行)
+- Phase 0(既存TS実装のテスト強化): 完了 — `docs/superpowers/plans/2026-08-12-aco-core-phase0-test-hardening.md`
 
 ## 背景・動機
 

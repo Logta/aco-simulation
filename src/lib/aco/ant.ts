@@ -11,26 +11,18 @@ export {
   type MovementParams,
   type BiasedMovementParams,
   type MovementResult,
-} from './movement'
+} from "./movement";
 
-export {
-  torusWrap,
-  torusDistance,
-  normalizeAngle,
-} from './geometry'
+export { torusWrap, torusDistance, normalizeAngle } from "./geometry";
 
-export {
-  avoidCollisions,
-  type CollisionParams,
-  type CollisionResult,
-} from './collision'
+export { avoidCollisions, type CollisionParams, type CollisionResult } from "./collision";
 
 export {
   followPheromone,
   findNearestTarget,
   getTargetsInRadius,
   type PheromoneTrackingParams,
-} from './pathfinding'
+} from "./pathfinding";
 
 // 定数もエクスポート
 export {
@@ -39,4 +31,4 @@ export {
   PHEROMONE_CONSTANTS,
   UI_CONSTANTS,
   DEBUG_CONSTANTS,
-} from './constants'
+} from "./constants";

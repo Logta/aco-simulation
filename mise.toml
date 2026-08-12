@@ -11,8 +11,16 @@ description = "本番ビルド"
 run = "bun run build"
 
 [tasks.lint]
-description = "ESLint を実行"
+description = "oxlint を実行"
 run = "bun run lint"
+
+[tasks.format]
+description = "oxfmt でフォーマット"
+run = "bun run format"
+
+[tasks."format:check"]
+description = "oxfmt でフォーマットチェック"
+run = "bun run format:check"
 
 [tasks.preview]
 description = "ビルド結果をプレビュー"

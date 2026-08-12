@@ -3,6 +3,6 @@ preload = ["./bun-test-setup.ts"]
 
 [install]
 # 3日以上前に公開されたバージョンのみインストール
-minimumReleaseAge = 259200  # 秒
+minimumReleaseAge = 259200 # 秒
 # 年齢ゲートから除外する信頼済みパッケージ
 minimumReleaseAgeExcludes = ["@types/node", "typescript"]

@@ -1,8 +1,8 @@
-import { useSimulationStore } from '@/stores/simulation.store'
-import { Button } from '@/components/ui/button'
-import { Slider } from '@/components/ui/slider'
-import { Label } from '@/components/ui/label'
-import { PlayIcon, PauseIcon, RefreshCwIcon, PlusIcon } from 'lucide-react'
+import { useSimulationStore } from "@/stores/simulation.store";
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { Label } from "@/components/ui/label";
+import { PlayIcon, PauseIcon, RefreshCwIcon, PlusIcon } from "lucide-react";
 
 export const ControlPanel = () => {
   const {
@@ -20,13 +20,13 @@ export const ControlPanel = () => {
     setPheromoneTrackingStrength,
     addRandomFoods,
     reset,
-  } = useSimulationStore()
+  } = useSimulationStore();
 
   return (
     <div className="space-y-6 p-6 bg-white rounded-lg shadow-md">
       <div>
         <h2 className="text-xl font-bold mb-4">シミュレーション制御</h2>
-        
+
         <div className="flex gap-2 mb-6">
           <Button
             onClick={toggleSimulation}
@@ -45,16 +45,12 @@ export const ControlPanel = () => {
               </>
             )}
           </Button>
-          
-          <Button
-            onClick={reset}
-            variant="outline"
-            className="flex items-center gap-2"
-          >
+
+          <Button onClick={reset} variant="outline" className="flex items-center gap-2">
             <RefreshCwIcon className="w-4 h-4" />
             リセット
           </Button>
-          
+
           <Button
             onClick={() => addRandomFoods(5)}
             variant="outline"
@@ -143,5 +139,5 @@ export const ControlPanel = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};

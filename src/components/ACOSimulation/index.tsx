@@ -1,22 +1,22 @@
-import { useEffect, useRef } from 'react'
-import { useSimulationStore } from '@/stores/simulation.store'
-import { SimulationCanvas } from './SimulationCanvas'
-import { ControlPanel } from './ControlPanel'
-import { useSimulation } from '@/hooks/useSimulation'
+import { useEffect, useRef } from "react";
+import { useSimulationStore } from "@/stores/simulation.store";
+import { SimulationCanvas } from "./SimulationCanvas";
+import { ControlPanel } from "./ControlPanel";
+import { useSimulation } from "@/hooks/useSimulation";
 
 export const ACOSimulation = () => {
-  const { initializeSimulation, addRandomFoods } = useSimulationStore()
-  const isInitialized = useRef(false)
+  const { initializeSimulation, addRandomFoods } = useSimulationStore();
+  const isInitialized = useRef(false);
 
-  useSimulation()
+  useSimulation();
 
   useEffect(() => {
     if (!isInitialized.current) {
-      initializeSimulation()
-      addRandomFoods(10)
-      isInitialized.current = true
+      initializeSimulation();
+      addRandomFoods(10);
+      isInitialized.current = true;
     }
-  }, [initializeSimulation, addRandomFoods])
+  }, [initializeSimulation, addRandomFoods]);
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 p-6 min-h-screen bg-gray-100">
@@ -27,5 +27,5 @@ export const ACOSimulation = () => {
         <ControlPanel />
       </div>
     </div>
-  )
-}
+  );
+};

@@ -1,0 +1,123 @@
+# ACOシミュレーションコアのMoonBit/WASM移行 設計
+
+- 作成日: 2026-08-12
+- ステータス: 承認済み(実装計画へ移行)
+
+## 背景・動機
+
+現状(アリ50匹・800×600ワールド)では体感的な性能問題は顕在化していないが、以下を見据えてホットパスをWASM化する:
+
+- アリ数の大幅な増加
+- 空間分割・経路探索などより重い処理の追加
+- JSシングルスレッド性能の将来的な限界への備え
+
+WASMターゲットとして **MoonBit** を採用する(Rustではなく)。
+
+## スコープ
+
+### 対象(毎フレーム実行されるホットパス)
+
+- `ant-behavior`(アリの行動決定)
+- `movement`(移動計算)
+- `collision`(衝突回避)
+- `pheromone`(フェロモンの放出・減衰・強度計算)
+- `pathfinding`(フェロモン追跡・最近傍探索)
+
+### 対象外
+
+- React/Zustandの状態管理(状態はTS/Zustand側が保持し続ける)
+- Canvas描画(`SimulationCanvas.tsx`)
+- UI操作・コントロール
+- ant/foodのID発行・追加削除ロジック(低頻度操作はJS側に残す)
+
+## アーキテクチャ:フレーム単位バッチ呼び出し + SoA
+
+### 検討した3案
+
+| 案 | 内容 | 判定 |
+|---|---|---|
+| **A. フレーム単位バッチ呼び出し(SoA)** | 毎フレーム1回だけWASM境界を越え、Ant/Food/Pheromoneをtyped arrayで丸ごと渡す | 採用 |
+| B. アリ単位でWASM呼び出し | `executeAntBehavior`を1:1でWASM関数に置き換え | 不採用: 毎フレーム50回以上の呼び出し+オブジェクトmarshalingが発生し、境界越えオーバーヘッドが計算量を上回りかねない |
+| C. 状態も含めエンジン全体をWASMが所有 | Zustandは参照のみ保持 | 不採用: 「状態はTS/Zustand側」というスコープを超え、devtools可視性やテスト構成への影響が大きい |
+
+### 採用理由
+
+WASM境界越えのコストは呼び出し回数に比例して効く。案Aなら毎フレーム1回の境界越えで済み、フェロモンをMapから密なグリッド配列に変えることで`getPheromoneStrength`の全件走査(O(アリ数×フェロモン数))も局所参照に改善できる副次効果もある。
+
+## データレイアウト
+
+- **Ants**: `Float64Array`(x, y, direction)+ `Uint8Array`(hasFood)+ `Int32Array`(targetFoodIndex、-1でnull)+ `Float64Array`(foodAmount、NaNでnull)
+- **Foods**: `Float64Array`(x, y, amount)。追加削除は低頻度操作なのでその都度リサイズ
+- **Pheromones**: 現行の`createPheromoneKey`が10px格子キーであることを利用し、`(worldWidth/10) × (worldHeight/10)`の密な`Float32Array`をtoFood/toNest用に2枚。world サイズ変更時のみリサイズ
+- **ID**: 文字列IDはJS側のみで保持し、ホットパスはindexで完結。Zustandの`removeFood(id)`等はindexマッピング経由で変換
+
+### 乱数
+
+`Math.random()`をWASM側から都度呼ぶと境界越えが増えるため、MoonBit内に自前PRNG(xorshift等)を実装し完結させる。
+
+## モジュール構成・ビルド
+
+- 新規ディレクトリ `moonbit/aco-core/`(`moon.mod.json` + `geometry.mbt` / `movement.mbt` / `collision.mbt` / `pheromone.mbt` / `pathfinding.mbt` / `step.mbt`)
+- `step.mbt` が唯一のエクスポート関数`step(...)`としてホットパス全体をまとめて実行
+- ビルド成果物は `src/wasm/aco-core.wasm` に配置。Vite側は追加ライブラリを増やさず、`fetch` + `WebAssembly.instantiateStreaming`の薄い自前ローダーで読み込む
+
+### 要検証事項
+
+`wasm` / `wasm-gc` どちらのビルドターゲットを使うかは、実装Phase 1の最初の小さなスパイク(Hello World → ビルド → Viteでロード)で確定させる。ここは設計時点では確信が持てないため、実装着手前に必ず検証する。
+
+## JS側アダプタ層
+
+- 新規 `src/lib/aco-wasm/adapter.ts`: Zustandの`ants[]`/`foods[]`/`pheromones Map` ⇔ typed array の変換を、構造変化時(アリ数変更・food追加削除・world size変更)のみ実施
+- `useSimulation.ts` はこの`adapter.step()`を呼ぶだけに簡略化
+
+## エラーハンドリング
+
+- パリティ確認後に旧TS実装を削除する方針のため、恒久的なフォールバックエンジンは持たない
+- WASM初期化(起動時1回)に失敗した場合はUIにエラー表示し、シミュレーション開始を不可にする
+
+## 既存TS実装の扱い
+
+パリティ確認後に削除する。二重実装を恒久的に残さず、シンプルに保つ。
+
+## テスト戦略
+
+各フェーズは**TDD(テストファースト)**で進める(`superpowers:test-driven-development`スキルに準拠)。
+
+### Phase 0: 現状TS実装のテスト強化(移行の前提固め)
+
+現状、`src/lib/aco/`配下で単体テストが存在するのは`ant-behavior.test.ts`のみ。今回ポート対象となる`geometry.ts`/`movement.ts`/`collision.ts`/`pheromone.ts`/`pathfinding.ts`には個別の単体テストが無く、MoonBit移植時の「正解データ」が揃っていない。移行に着手する前に以下を行う:
+
+1. **重複ロジックの一本化**: `simulation-engine.ts`(`executeSimulationStep`)と`useSimulation.ts`内のインライン処理(`processAnts`/`applyUpdates`)が同じ役割を重複して持っている。`useSimulation.ts`が`simulation-engine.ts`の`executeSimulationStep`を呼ぶ形に統一する
+2. **単体テストの新規作成**(決定的な入出力をテーブル化して仕様として固定):
+   - `geometry.test.ts`(`torusDistance`/`torusWrap`/`normalizeAngle`)
+   - `movement.test.ts`(`moveAnt`/`moveTowardsTarget`/`moveWithBias`)
+   - `collision.test.ts`(`avoidCollisions`)
+   - `pheromone.test.ts`(`depositPheromone`/`decayPheromones`/`getPheromoneStrength`)
+   - `pathfinding.test.ts`(`followPheromone`/`findNearestTarget`/`getTargetsInRadius`)
+   - `simulation-engine.test.ts`(一本化後の`executeSimulationStep`)
+3. テストで見つかった既存挙動の疑問点・バグらしき箇所はこの時点で洗い出し、意図を確認する
+
+### Phase 1以降: MoonBit移植時のテスト
+
+1. **MoonBit側**: 各モジュール(`geometry.mbt`/`pheromone.mbt`/`movement.mbt`/`collision.mbt`/`pathfinding.mbt`/`step.mbt`)は実装前に`*_test.mbt`を先に書く
+   - 決定的な関数はPhase 0で作成したTSテストの入出力テーブルをMoonBit側のテストケースとして先に書き起こし、それに合格するまで実装する(数値一致を仕様として固定)
+   - 乱数を含む関数は、乱数部分を除いた不変条件(境界内に収まる、angleの正規化範囲、PRNGのシード再現性など)を先にテストとして書く
+2. **JS側アダプタ**: `adapter.ts`のtyped array変換も先にユニットテストを書いてから実装(構造変化時のリサイズ・境界値・空配列などのケースを含む)
+3. **統合テスト**: WASMモジュールをロードして数ステップ実行するテストを、`useSimulation.ts`差し替え前に用意し、パリティ確認の判定基準として使う
+4. 各移行ステップは「テスト作成 → 失敗確認 → MoonBit実装 → パス確認」を1サイクルとして進める
+5. パリティ確認後、旧TS実装とそのテストを削除
+
+## 運用面の既知の懸念
+
+`moon` CLIは現状miseで管理できない(miseにmoonbitプラグインが存在しない)。今回のスコープでは`mise.toml`でのバージョン固定は行わず、READMEに手動インストール手順を明記するにとどめる。
+
+## 移行順序(概要)
+
+0. 現状TS実装のテスト強化(上記Phase 0)
+1. 最小スパイク(Hello World → wasm-gc/wasm ビルド → Viteロード検証)で技術リスクを潰す
+2. `geometry`のポート+テスト(依存最小)
+3. `pheromone`(密グリッド化含む)のポート+テスト
+4. `movement`/`collision`のポート+テスト
+5. `pathfinding`/`ant-behavior`統合、`step()`実装
+6. `adapter.ts`実装、`useSimulation.ts`置き換え
+7. パリティ確認 → 旧TS実装削除

@@ -69,3 +69,30 @@ test "pheromone_strength is zero for an empty grid" {
   let grid = FixedArray::make(100, 0.0)
   assert_eq(pheromone_strength(grid, 10, 10, { x: 0.0, y: 0.0 }, 30.0), 0.0)
 }
+
+///|
+test "pheromone_strength respects the detection radius boundary" {
+  let grid = FixedArray::make(100, 0.0)
+  // Query position: {x: 0.0, y: 0.0}
+  // detection_radius: 30.0, cell_size: 10.0
+  // cell_radius = (30.0/10.0).to_int() + 1 = 3 + 1 = 4
+
+  // Test 1: Cell (2, 1) is INSIDE the detection radius boundary
+  // cell_center = (2 * 10.0 + 5.0, 1 * 10.0 + 5.0) = (25.0, 15.0)
+  // distance = sqrt((0-25)^2 + (0-15)^2) = sqrt(625 + 225) = sqrt(850) ≈ 29.15
+  // Since 29.15 < 30.0, this cell should contribute
+  grid[grid_index(2, 1, 10)] = 40.0
+  let strength_inside = pheromone_strength(grid, 10, 10, { x: 0.0, y: 0.0 }, 30.0)
+  assert_true(strength_inside > 0.0)
+
+  // Test 2: Cell (3, 0) is OUTSIDE the detection radius boundary
+  // cell_center = (3 * 10.0 + 5.0, 0 * 10.0 + 5.0) = (35.0, 5.0)
+  // distance = sqrt((0-35)^2 + (0-5)^2) = sqrt(1225 + 25) = sqrt(1250) ≈ 35.36
+  // Since 35.36 > 30.0, this cell should NOT contribute
+  for i in 0..<100 {
+    grid[i] = 0.0
+  }
+  grid[grid_index(3, 0, 10)] = 40.0
+  let strength_outside = pheromone_strength(grid, 10, 10, { x: 0.0, y: 0.0 }, 30.0)
+  assert_eq(strength_outside, 0.0)
+}

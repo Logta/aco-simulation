@@ -13,3 +13,5 @@ global.navigator = dom.window.navigator;
 global.HTMLElement = dom.window.HTMLElement;
 global.Text = dom.window.Text;
 global.getComputedStyle = dom.window.getComputedStyle;
+global.requestAnimationFrame = dom.window.requestAnimationFrame.bind(dom.window);
+global.cancelAnimationFrame = dom.window.cancelAnimationFrame.bind(dom.window);

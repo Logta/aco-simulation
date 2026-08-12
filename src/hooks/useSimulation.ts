@@ -1,10 +1,8 @@
 import { useEffect, useRef } from "react";
 import { useSimulationStore } from "../stores/simulation.store";
-import { executeAntBehavior } from "../lib/aco/ant-behavior";
-import { decayPheromones } from "../lib/aco/pheromone";
-import type { Ant, Food, Pheromone, Position } from "../lib/aco/types";
+import { executeSimulationStep, executePheromoneDacay } from "../lib/aco/simulation-engine";
+import type { SimulationUpdate } from "../lib/aco/simulation-engine";
 
-// Configuration constants
 const FRAME_DELAY_MS = 50;
 const PHEROMONE_DECAY_INTERVAL_MS = 500;
 
@@ -40,125 +38,44 @@ export const useSimulation = () => {
       nest,
       worldWidth,
       worldHeight,
+      antCount,
       pheromoneDecayRate,
       pheromoneDepositAmount,
       pheromoneTrackingStrength,
+      speed,
     } = simulationState;
 
-    // Process all ants and collect updates
-    const updates = processAnts({
-      ants,
-      foods,
-      pheromones,
-      nest,
-      worldWidth,
-      worldHeight,
-      pheromoneDepositAmount,
-      pheromoneTrackingStrength,
-    });
+    const update = executeSimulationStep(
+      {
+        worldWidth,
+        worldHeight,
+        antCount,
+        pheromoneDecayRate,
+        pheromoneDepositAmount,
+        pheromoneTrackingStrength,
+        speed,
+      },
+      { ants, foods, pheromones, nest },
+    );
 
-    // Apply all updates in a single state change
-    applyUpdates(updates, currentTime);
+    applyUpdate(update, currentTime);
   };
 
-  const processAnts = (context: {
-    ants: Ant[];
-    foods: Food[];
-    pheromones: Map<string, Pheromone>;
-    nest: Position;
-    worldWidth: number;
-    worldHeight: number;
-    pheromoneDepositAmount: number;
-    pheromoneTrackingStrength: number;
-  }) => {
-    const antUpdates: Array<{ id: string; updates: Partial<Ant> }> = [];
-    const pheromoneUpdates = new Map<string, Pheromone>();
-    const foodUpdates: Array<{ id: string; updates: Partial<Food> }> = [];
-    const foodsToRemove: string[] = [];
-
-    context.ants.forEach((ant) => {
-      const result = executeAntBehavior({
-        ant,
-        foods: context.foods,
-        pheromones: context.pheromones,
-        nest: context.nest,
-        worldWidth: context.worldWidth,
-        worldHeight: context.worldHeight,
-        pheromoneDepositAmount: context.pheromoneDepositAmount,
-        pheromoneTrackingStrength: context.pheromoneTrackingStrength,
-        ants: context.ants,
-      });
-
-      // Collect ant updates
-      if (result.antUpdate) {
-        antUpdates.push({ id: ant.id, updates: result.antUpdate });
-      }
-
-      // Merge pheromone updates
-      result.pheromoneUpdates.forEach((pheromone: Pheromone, key: string) => {
-        pheromoneUpdates.set(key, pheromone);
-      });
-
-      // Collect food updates
-      if (result.foodUpdate) {
-        foodUpdates.push({
-          id: result.foodUpdate.id,
-          updates: { amount: result.foodUpdate.amount },
-        });
-      }
-      if (result.removeFood) {
-        foodsToRemove.push(result.removeFood);
-      }
-    });
-
-    return { antUpdates, pheromoneUpdates, foodUpdates, foodsToRemove };
-  };
-
-  const applyUpdates = (
-    updates: {
-      antUpdates: Array<{ id: string; updates: Partial<Ant> }>;
-      pheromoneUpdates: Map<string, Pheromone>;
-      foodUpdates: Array<{ id: string; updates: Partial<Food> }>;
-      foodsToRemove: string[];
-    },
-    currentTime: number,
-  ) => {
+  const applyUpdate = (update: SimulationUpdate, currentTime: number) => {
     useSimulationStore.setState((state) => {
-      // Update ants
-      const newAnts = state.ants.map((ant) => {
-        const update = updates.antUpdates.find((u) => u.id === ant.id);
-        return update ? { ...ant, ...update.updates } : ant;
-      });
+      const next: Partial<typeof state> = {};
 
-      // Update foods
-      let newFoods = state.foods;
-      if (updates.foodUpdates.length > 0 || updates.foodsToRemove.length > 0) {
-        newFoods = state.foods
-          .filter((f) => !updates.foodsToRemove.includes(f.id))
-          .map((food) => {
-            const update = updates.foodUpdates.find((u) => u.id === food.id);
-            return update ? { ...food, ...update.updates } : food;
-          });
-      }
+      if (update.ants) next.ants = update.ants;
+      if (update.foods) next.foods = update.foods;
 
-      // Update pheromones
-      const newPheromones = new Map(state.pheromones);
-      updates.pheromoneUpdates.forEach((pheromone: Pheromone, key: string) => {
-        newPheromones.set(key, pheromone);
-      });
-
-      // Decay pheromones periodically
-      let finalPheromones = newPheromones;
+      let pheromones = update.pheromones ?? state.pheromones;
       if (currentTime - lastDecayTimeRef.current > PHEROMONE_DECAY_INTERVAL_MS) {
-        finalPheromones = decayPheromones(newPheromones, state.pheromoneDecayRate);
+        pheromones = executePheromoneDacay(pheromones, state.pheromoneDecayRate);
         lastDecayTimeRef.current = currentTime;
       }
+      if (pheromones !== state.pheromones) next.pheromones = pheromones;
 
-      return {
-        ants: newAnts,
-        foods: newFoods,
-        pheromones: finalPheromones,
-      };
+      return next;
     });
   };
 

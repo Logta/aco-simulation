@@ -3,7 +3,7 @@
 - 作成日: 2026-08-12
 - ステータス: 承認済み(実装計画へ移行)
 - Phase 0(既存TS実装のテスト強化): 完了 — `docs/superpowers/plans/2026-08-12-aco-core-phase0-test-hardening.md`
-- Phase 1 最小スパイク(wasm/wasm-gcターゲット検証): 完了 — `wasm-gc`採用確定(`moonbit-spike`ブランチ、`moonbit/aco_core/`)
+- Phase 1 最小スパイク(wasm/wasm-gcターゲット検証): 完了 — `wasm`(非GC)採用確定(`moonbit-spike`/`moonbit-spike-2`ブランチ、`moonbit/aco_core/`)。zero-copyメモリアクセスの追加検証によりwasm-gcから変更
 
 ## 背景・動機
 
@@ -64,15 +64,19 @@ WASM境界越えのコストは呼び出し回数に比例して効く。案Aな
 - 新規ディレクトリ `moonbit/aco_core/`(MoonBitのプロジェクト名にハイフンは使えないためアンダースコア。`moon.mod.json` + `geometry.mbt` / `mt19937.mbt` / `movement.mbt` / `collision.mbt` / `pheromone.mbt` / `pathfinding.mbt` / `step.mbt`)
 - `step.mbt` が唯一のエクスポート関数`step(...)`としてホットパス全体をまとめて実行
 - ビルド成果物は `src/wasm/aco_core.wasm` に配置。Vite側は追加ライブラリを増やさず、`fetch` + `WebAssembly.instantiateStreaming`の薄い自前ローダーで読み込む
-- モジュール/パッケージ設定は `moon.mod.json` / `moon.pkg.json`(JSON形式)を採用する。エクスポートするpublic関数は `moon.pkg.json` の `link.wasm-gc.exports` に列挙するだけでよく、追加のグルーコード生成は不要
+- パッケージ設定は `moon.pkg`(MoonBit独自DSL)を使用し、先頭で `pkgtype(kind: "foreign_library")` を宣言する。エクスポートする各public関数には `#export_name("...")` アトリビュートを付与する(関数名の近くに書けて可読性が高く、公式ドキュメントも新方式として推奨している)。メモリエクスポートは `options("link": {"wasm": {"export-memory-name": "memory"}})` で設定する
 
-### 要検証事項 → スパイクで解消済み(2026-08-12)
+### 要検証事項 → スパイクで解消(2026-08-12、2回の追加検証を経て確定)
 
-`moonbit/aco_core/`(spike成果、`moonbit-spike`ブランチ)で検証済み:
+最初のスパイク(`moonbit-spike`ブランチ)では`wasm-gc`採用と結論したが、SoA/zero-copy設計の核心である「JS側からWASMの線形メモリをtyped arrayとして直接読み書きできるか」を追加検証した結果、**結論を`wasm`(非GC)ターゲットに変更する。**
 
-- `moon build --target wasm` / `--target wasm-gc` はどちらも問題なくビルド・ロードできることを確認
-- **`wasm-gc` を採用する。** Node.js v24で追加のimportなしにロード・実行できることを確認済み(WasmGCはNode 22+/evergreenブラウザで標準サポートされており、2026年時点で残存リスクは低いと判断)
-- Viteは追加プラグイン無しで動作する: `new URL("./x.wasm", import.meta.url)` パターンで静的アセットとして扱われ、小さいファイルはdata URLにインライン化、大きいファイルはハッシュ付きアセットとして出力される。どちらの経路でも配信時のMIMEタイプは自動的に `application/wasm` になり、`WebAssembly.instantiateStreaming` がそのまま使える
+**検証内容と結論:**
+
+- **`wasm-gc`では、`FixedArray[Double]`等の戻り値がJSから見て不透明な参照(`[Object: null prototype] {}`)になり、線形メモリ経由でtyped arrayとして直接読めないことを実機で確認した。** MoonBitのFFIドキュメントにも「`FixedArray[Byte]/Bytes`はWasm/Wasm-GCどちらでも`externref`にマップされる」と明記されており、これはwasm-gc(WasmGC提案)の仕様上の制約(GC管理オブジェクトはホストに対して不透明)によるもので、ツールチェインのバージョンに依らない
+- **`wasm`(非GC)ターゲットでは、`FixedArray[Double]`を返す関数の戻り値が生のi32ポインタ(線形メモリオフセット)になり、`new Float64Array(memory.buffer, ptr, length)`でゼロコピーに読めることを実機で確認した。** 同様に、`FixedArray[Double]`を引数に取る関数にJS側から取得したポインタをそのまま渡すことも確認済み(往復動作を確認)
+- ポインタの生存期間: 参照カウント方式のGCのため、値を読み終えるまでの短い区間(同一フレーム内での読み取り)では有効性を確認したが、フレームをまたいで古いポインタを保持し続ける使い方は避ける設計とする(毎フレーム新しく`step()`を呼び、その場で結果を読み切る現設計と整合)
+- **ビルド設定の重要な訂正**: 当初想定していた `moon.pkg.json`(JSON形式)の `link.wasm-gc.exports` + `export-memory-name` の組み合わせは、検証したツールチェインバージョン(`moon 0.1.20260522`)で関数エクスポートが消えるバグがあった。`moon upgrade`で最新版(`moon 0.1.20260807`)に更新し、`moon.pkg`(DSL形式)+ `pkgtype(kind: "foreign_library")` + `#export_name(...)` アトリビュート方式に切り替えたところ、関数・メモリの同時エクスポートが正しく動作した
+- Viteは追加プラグイン無しで動作する: `new URL("./x.wasm", import.meta.url)` パターンで静的アセットとして扱われ、小さいファイルはdata URLにインライン化、大きいファイルはハッシュ付きアセットとして出力される。どちらの経路でも配信時のMIMEタイプは自動的に `application/wasm` になり、`WebAssembly.instantiateStreaming` がそのまま使える(この結論は1回目のスパイクのまま変更なし)
 - **未検証**: 実ブラウザでの`WebAssembly.instantiateStreaming`実行(本セッションではブラウザ拡張が利用不可だったため)。Phase 1本実装の早い段階で一度ブラウザ実地確認を行うこと
 
 ## JS側アダプタ層
@@ -136,7 +140,7 @@ WASM境界越えのコストは呼び出し回数に比例して効く。案Aな
 ## 移行順序(概要)
 
 0. 現状TS実装のテスト強化(上記Phase 0) — 完了
-1. 最小スパイク(Hello World → wasm-gc/wasm ビルド → Viteロード検証)で技術リスクを潰す — 完了(`wasm-gc`採用確定、詳細は上記「要検証事項」参照)
+1. 最小スパイク(Hello World → wasm-gc/wasm ビルド → Viteロード検証)で技術リスクを潰す — 完了(`wasm`(非GC)採用確定、詳細は上記「要検証事項」参照)
 2. `geometry`のポート+テスト(依存最小)
 3. `mt19937`(PRNG)のポート+テスト(`movement`が乱数に依存するため先行させる)
 4. `pheromone`(密グリッド化含む)のポート+テスト

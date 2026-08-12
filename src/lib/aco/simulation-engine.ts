@@ -99,7 +99,8 @@ const applyBehaviorResults = (
     });
   });
 
-  if (pheromoneUpdates.size !== state.pheromones.size) {
+  const hasDeposit = results.some(({ result }) => result.pheromoneUpdates.size > 0);
+  if (hasDeposit) {
     update.pheromones = pheromoneUpdates;
   }
 

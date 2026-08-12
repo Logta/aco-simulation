@@ -90,6 +90,35 @@ describe("executeSimulationStep", () => {
     expect(Array.from(update.pheromones!.values())[0].type).toBe("toFood");
   });
 
+  it("increases intensity of an existing pheromone when a returning ant deposits onto that cell", () => {
+    const state: SimulationState = {
+      ants: [
+        {
+          id: "ant-1",
+          position: { x: 100, y: 100 },
+          hasFood: true,
+          targetFood: "food-1",
+          direction: 0,
+          foodAmount: 10,
+        },
+      ],
+      foods: [],
+      pheromones: new Map([
+        [
+          "10,10", // createPheromoneKey({x:100,y:100}) => floor(100/10),floor(100/10)
+          { position: { x: 105, y: 105 }, intensity: 5, type: "toFood" as const },
+        ],
+      ]),
+      nest: { x: 400, y: 300 },
+    };
+
+    const update = executeSimulationStep(baseConfig, state);
+
+    expect(update.pheromones).toBeDefined();
+    expect(update.pheromones!.size).toBe(1);
+    expect(update.pheromones!.get("10,10")!.intensity).toBeGreaterThan(5);
+  });
+
   it("reduces food amount when a foraging ant collects it, and updates that ant's state", () => {
     const state: SimulationState = {
       ants: [

@@ -2,6 +2,23 @@
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
+## 開発環境のセットアップ
+
+このプロジェクトはツールバージョン・タスク管理に [mise](https://mise.jdx.dev/) を使用しています。
+
+```bash
+# ツール(bun, node)のインストール
+mise install
+
+# 依存関係のインストール
+mise run install
+
+# 開発サーバーの起動
+mise run dev
+```
+
+その他のタスク一覧は `mise tasks` で確認できます(`build` / `lint` / `preview` / `test` / `test:bun` / `test:ui` / `test:coverage`)。
+
 Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh

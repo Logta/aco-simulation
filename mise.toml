@@ -1,0 +1,42 @@
+[tools]
+node = "24.19.0"
+bun = "1.3.14"
+
+[tasks.dev]
+description = "開発サーバーを起動"
+run = "bun run dev"
+
+[tasks.build]
+description = "本番ビルド"
+run = "bun run build"
+
+[tasks.lint]
+description = "ESLint を実行"
+run = "bun run lint"
+
+[tasks.preview]
+description = "ビルド結果をプレビュー"
+run = "bun run preview"
+
+[tasks.test]
+description = "vitest でテストを実行"
+run = "bun run test"
+
+[tasks."test:bun"]
+description = "bun test でテストを実行"
+run = "bun run test:bun"
+
+[tasks."test:ui"]
+description = "vitest UI を起動"
+run = "bun run test:ui"
+
+[tasks."test:coverage"]
+description = "テストカバレッジを計測"
+run = "bun run test:coverage"
+
+[tasks.install]
+description = "依存関係をインストール"
+run = "bun install"
+
+[settings]
+experimental = true

@@ -53,11 +53,13 @@ WASM境界越えのコストは呼び出し回数に比例して効く。案Aな
 
 ### 乱数
 
-`Math.random()`をWASM側から都度呼ぶと境界越えが増えるため、MoonBit内に自前PRNG(xorshift等)を実装し完結させる。
+`Math.random()`をWASM側から都度呼ぶと境界越えが増えるため、MoonBit内に自前PRNGを実装し完結させる。アルゴリズムは**メルセンヌ・ツイスタ(MT19937)**を採用する。シードはJS側から初期化時に一度だけ渡す。
+
+- `geometry.mbt`と同様、`mt19937.mbt`として独立モジュール化し、`*_test.mbt`で既知のシード値に対する出力列の妥当性(標準的なテストベクタ、または最低限「同一シード→同一系列の再現性」)を先にテストする(Phase 1以降のTDD方針に準拠)
 
 ## モジュール構成・ビルド
 
-- 新規ディレクトリ `moonbit/aco-core/`(`moon.mod.json` + `geometry.mbt` / `movement.mbt` / `collision.mbt` / `pheromone.mbt` / `pathfinding.mbt` / `step.mbt`)
+- 新規ディレクトリ `moonbit/aco-core/`(`moon.mod.json` + `geometry.mbt` / `mt19937.mbt` / `movement.mbt` / `collision.mbt` / `pheromone.mbt` / `pathfinding.mbt` / `step.mbt`)
 - `step.mbt` が唯一のエクスポート関数`step(...)`としてホットパス全体をまとめて実行
 - ビルド成果物は `src/wasm/aco-core.wasm` に配置。Vite側は追加ライブラリを増やさず、`fetch` + `WebAssembly.instantiateStreaming`の薄い自前ローダーで読み込む
 
@@ -69,6 +71,18 @@ WASM境界越えのコストは呼び出し回数に比例して効く。案Aな
 
 - 新規 `src/lib/aco-wasm/adapter.ts`: Zustandの`ants[]`/`foods[]`/`pheromones Map` ⇔ typed array の変換を、構造変化時(アリ数変更・food追加削除・world size変更)のみ実施
 - `useSimulation.ts` はこの`adapter.step()`を呼ぶだけに簡略化
+
+### 描画用の読み取りビュー(zero-copy)
+
+`SimulationCanvas.tsx`は描画のたびにZustandの`ants[]`/`foods[]`/`pheromones Map`へ変換し直すのではなく、WASM linear memory上のtyped arrayを直接読む読み取り専用ビューを使う。「WASMが描画する」のではなく、「JSが描画に使うデータをWASMのバッファから直接読む」だけの変更であり、adapter層に描画用のビューを一つ追加する程度で済む。
+
+- `adapter.getRenderView()`が以下を返す(すべて`instance.exports.memory.buffer`上のzero-copyビュー):
+  - アリ: `antX` / `antY` / `antDirection`(`Float64Array`)、`antHasFood`(`Uint8Array`)、`antCount`
+  - フード: `foodX` / `foodY` / `foodAmount`(`Float64Array`)、`foodCount`
+  - フェロモン: `pheromoneToFood` / `pheromoneToNest`(`Float32Array`、密グリッド)、`gridWidth` / `gridHeight` / `cellSize`
+- **既存コードの副次的な簡略化**: 現在`SimulationCanvas.tsx`は毎フレーム`pheromones`(Map)から`useMemo`で独自の空間インデックス(`pheromoneGrid`)を再構築しているが、フェロモンがWASM側で最初から密なグリッド配列になるため、この再インデックス処理は丸ごと不要になり削除できる
+- 副次的に、`drawAnts`が毎フレーム`ants.filter()`で配列を2回複製している箇所も、生のtyped arrayを1パス走査してhasFoodで分岐する形に置き換えられ、無駄なアロケーションが減る
+- **注意(WASMメモリ成長との整合性)**: WASM linear memoryが`grow`すると既存の`ArrayBuffer`はdetachされ、古いtyped arrayビューは無効になる。そのため`getRenderView()`は呼び出しのたびに(=毎フレーム)新しいビューを取得する実装とし、フレームをまたいでビューをキャッシュしない
 
 ## エラーハンドリング
 
@@ -99,7 +113,7 @@ WASM境界越えのコストは呼び出し回数に比例して効く。案Aな
 
 ### Phase 1以降: MoonBit移植時のテスト
 
-1. **MoonBit側**: 各モジュール(`geometry.mbt`/`pheromone.mbt`/`movement.mbt`/`collision.mbt`/`pathfinding.mbt`/`step.mbt`)は実装前に`*_test.mbt`を先に書く
+1. **MoonBit側**: 各モジュール(`geometry.mbt`/`mt19937.mbt`/`pheromone.mbt`/`movement.mbt`/`collision.mbt`/`pathfinding.mbt`/`step.mbt`)は実装前に`*_test.mbt`を先に書く
    - 決定的な関数はPhase 0で作成したTSテストの入出力テーブルをMoonBit側のテストケースとして先に書き起こし、それに合格するまで実装する(数値一致を仕様として固定)
    - 乱数を含む関数は、乱数部分を除いた不変条件(境界内に収まる、angleの正規化範囲、PRNGのシード再現性など)を先にテストとして書く
 2. **JS側アダプタ**: `adapter.ts`のtyped array変換も先にユニットテストを書いてから実装(構造変化時のリサイズ・境界値・空配列などのケースを含む)
@@ -116,8 +130,9 @@ WASM境界越えのコストは呼び出し回数に比例して効く。案Aな
 0. 現状TS実装のテスト強化(上記Phase 0)
 1. 最小スパイク(Hello World → wasm-gc/wasm ビルド → Viteロード検証)で技術リスクを潰す
 2. `geometry`のポート+テスト(依存最小)
-3. `pheromone`(密グリッド化含む)のポート+テスト
-4. `movement`/`collision`のポート+テスト
-5. `pathfinding`/`ant-behavior`統合、`step()`実装
-6. `adapter.ts`実装、`useSimulation.ts`置き換え
-7. パリティ確認 → 旧TS実装削除
+3. `mt19937`(PRNG)のポート+テスト(`movement`が乱数に依存するため先行させる)
+4. `pheromone`(密グリッド化含む)のポート+テスト
+5. `movement`/`collision`のポート+テスト
+6. `pathfinding`/`ant-behavior`統合、`step()`実装
+7. `adapter.ts`実装(描画用read viewを含む)、`useSimulation.ts`/`SimulationCanvas.tsx`置き換え
+8. パリティ確認 → 旧TS実装削除

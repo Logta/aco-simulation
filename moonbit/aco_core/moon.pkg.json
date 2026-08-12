@@ -1,0 +1,11 @@
+{
+  "link": {
+    "wasm": {
+      "exports": ["add"],
+      "export-memory-name": "memory"
+    },
+    "wasm-gc": {
+      "exports": ["add"]
+    }
+  }
+}

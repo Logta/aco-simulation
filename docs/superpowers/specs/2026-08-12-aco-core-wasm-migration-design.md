@@ -3,6 +3,7 @@
 - 作成日: 2026-08-12
 - ステータス: 承認済み(実装計画へ移行)
 - Phase 0(既存TS実装のテスト強化): 完了 — `docs/superpowers/plans/2026-08-12-aco-core-phase0-test-hardening.md`
+- Phase 1 最小スパイク(wasm/wasm-gcターゲット検証): 完了 — `wasm-gc`採用確定(`moonbit-spike`ブランチ、`moonbit/aco_core/`)
 
 ## 背景・動機
 
@@ -60,13 +61,19 @@ WASM境界越えのコストは呼び出し回数に比例して効く。案Aな
 
 ## モジュール構成・ビルド
 
-- 新規ディレクトリ `moonbit/aco-core/`(`moon.mod.json` + `geometry.mbt` / `mt19937.mbt` / `movement.mbt` / `collision.mbt` / `pheromone.mbt` / `pathfinding.mbt` / `step.mbt`)
+- 新規ディレクトリ `moonbit/aco_core/`(MoonBitのプロジェクト名にハイフンは使えないためアンダースコア。`moon.mod.json` + `geometry.mbt` / `mt19937.mbt` / `movement.mbt` / `collision.mbt` / `pheromone.mbt` / `pathfinding.mbt` / `step.mbt`)
 - `step.mbt` が唯一のエクスポート関数`step(...)`としてホットパス全体をまとめて実行
-- ビルド成果物は `src/wasm/aco-core.wasm` に配置。Vite側は追加ライブラリを増やさず、`fetch` + `WebAssembly.instantiateStreaming`の薄い自前ローダーで読み込む
+- ビルド成果物は `src/wasm/aco_core.wasm` に配置。Vite側は追加ライブラリを増やさず、`fetch` + `WebAssembly.instantiateStreaming`の薄い自前ローダーで読み込む
+- モジュール/パッケージ設定は `moon.mod.json` / `moon.pkg.json`(JSON形式)を採用する。エクスポートするpublic関数は `moon.pkg.json` の `link.wasm-gc.exports` に列挙するだけでよく、追加のグルーコード生成は不要
 
-### 要検証事項
+### 要検証事項 → スパイクで解消済み(2026-08-12)
 
-`wasm` / `wasm-gc` どちらのビルドターゲットを使うかは、実装Phase 1の最初の小さなスパイク(Hello World → ビルド → Viteでロード)で確定させる。ここは設計時点では確信が持てないため、実装着手前に必ず検証する。
+`moonbit/aco_core/`(spike成果、`moonbit-spike`ブランチ)で検証済み:
+
+- `moon build --target wasm` / `--target wasm-gc` はどちらも問題なくビルド・ロードできることを確認
+- **`wasm-gc` を採用する。** Node.js v24で追加のimportなしにロード・実行できることを確認済み(WasmGCはNode 22+/evergreenブラウザで標準サポートされており、2026年時点で残存リスクは低いと判断)
+- Viteは追加プラグイン無しで動作する: `new URL("./x.wasm", import.meta.url)` パターンで静的アセットとして扱われ、小さいファイルはdata URLにインライン化、大きいファイルはハッシュ付きアセットとして出力される。どちらの経路でも配信時のMIMEタイプは自動的に `application/wasm` になり、`WebAssembly.instantiateStreaming` がそのまま使える
+- **未検証**: 実ブラウザでの`WebAssembly.instantiateStreaming`実行(本セッションではブラウザ拡張が利用不可だったため)。Phase 1本実装の早い段階で一度ブラウザ実地確認を行うこと
 
 ## JS側アダプタ層
 
@@ -128,8 +135,8 @@ WASM境界越えのコストは呼び出し回数に比例して効く。案Aな
 
 ## 移行順序(概要)
 
-0. 現状TS実装のテスト強化(上記Phase 0)
-1. 最小スパイク(Hello World → wasm-gc/wasm ビルド → Viteロード検証)で技術リスクを潰す
+0. 現状TS実装のテスト強化(上記Phase 0) — 完了
+1. 最小スパイク(Hello World → wasm-gc/wasm ビルド → Viteロード検証)で技術リスクを潰す — 完了(`wasm-gc`採用確定、詳細は上記「要検証事項」参照)
 2. `geometry`のポート+テスト(依存最小)
 3. `mt19937`(PRNG)のポート+テスト(`movement`が乱数に依存するため先行させる)
 4. `pheromone`(密グリッド化含む)のポート+テスト

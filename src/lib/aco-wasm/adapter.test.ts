@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { loadAdapterFromBytes, initializeSimulation, getRenderView, reinitializeAnts, addFood, addRandomFoods, resetAll } from "./adapter";
+import { loadAdapterFromBytes, initializeSimulation, getRenderView, reinitializeAnts, addFood, addRandomFoods, resetAll, stepSimulation, decaySimulation } from "./adapter";
 
 const wasmBytes = readFileSync(resolve(import.meta.dirname, "../../wasm/aco_core.wasm"));
 
@@ -107,5 +107,49 @@ describe("resetAll", () => {
     const view = getRenderView();
     expect(view.antCount).toBe(9);
     expect(view.foodCount).toBe(0);
+  });
+});
+
+describe("stepSimulation", () => {
+  it("moves ants without throwing", () => {
+    initializeSimulation({ antCount: 3, nest: { x: 400, y: 300 }, worldWidth: 800, worldHeight: 600 });
+
+    expect(() =>
+      stepSimulation({ pheromoneDepositAmount: 2, pheromoneTrackingStrength: 0.7 }),
+    ).not.toThrow();
+
+    const view = getRenderView();
+    const moved = Array.from({ length: 3 }, (_, i) => view.antX[i] !== 400 || view.antY[i] !== 300);
+    expect(moved.some(Boolean)).toBe(true);
+  });
+
+  it("compacts depleted food out of the array after step", () => {
+    initializeSimulation({ antCount: 1, nest: { x: 400, y: 300 }, worldWidth: 800, worldHeight: 600 });
+    // アリのすぐ隣(巣から離れた場所)に量1の食料を置き、確実に1ステップで
+    // 収集・枯渇させる。アリは巣位置(400,300)からスタートするため、
+    // 食料検出範囲(20)内に置く。
+    addFood({ x: 405, y: 300 }, 1);
+
+    expect(getRenderView().foodCount).toBe(1);
+
+    // 収集は距離<10の場合のみ即時なので、必要なら数フレーム回す。
+    for (let i = 0; i < 20 && getRenderView().foodCount > 0; i++) {
+      stepSimulation({ pheromoneDepositAmount: 2, pheromoneTrackingStrength: 0.7 });
+    }
+
+    expect(getRenderView().foodCount).toBe(0);
+  });
+});
+
+describe("decaySimulation", () => {
+  it("reduces existing pheromone intensity", () => {
+    initializeSimulation({ antCount: 1, nest: { x: 400, y: 300 }, worldWidth: 800, worldHeight: 600 });
+    // フェロモングリッドに直接値を書き込む(テスト専用の内部アクセス)。
+    const view = getRenderView();
+    view.pheromoneToFood[42] = 50;
+
+    decaySimulation(0.9);
+
+    expect(getRenderView().pheromoneToFood[42]).toBeLessThan(50);
   });
 });

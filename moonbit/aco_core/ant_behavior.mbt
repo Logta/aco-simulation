@@ -66,15 +66,27 @@ pub fn execute_ant_behavior(
   let direction = ant_direction[ant_index]
   if ant_has_food[ant_index] == 1 {
     execute_returning_behavior(
-      rng, position, direction, ant_food_amount[ant_index], ant_x, ant_y, ant_index, ant_count,
-      pheromone_to_food, grid_width, grid_height, nest, world_width, world_height,
+      rng,
+      position,
+      direction,
+      ant_food_amount[ant_index],
+      ant_x,
+      ant_y,
+      ant_index,
+      ant_count,
+      pheromone_to_food,
+      grid_width,
+      grid_height,
+      nest,
+      world_width,
+      world_height,
       pheromone_deposit_amount,
     )
   } else {
     execute_foraging_behavior(
-      rng, position, direction, ant_x, ant_y, ant_index, ant_count, food_x, food_y, food_amount,
-      food_count, pheromone_to_food, pheromone_to_nest, grid_width, grid_height, world_width,
-      world_height, pheromone_tracking_strength,
+      rng, position, direction, ant_x, ant_y, ant_index, ant_count, food_x, food_y,
+      food_amount, food_count, pheromone_to_food, pheromone_to_nest, grid_width,
+      grid_height, world_width, world_height, pheromone_tracking_strength,
     )
   }
 }
@@ -97,7 +109,9 @@ fn execute_returning_behavior(
   world_height : Double,
   pheromone_deposit_amount : Double,
 ) -> AntBehaviorResult {
-  let distance_to_nest = torus_distance(position, nest, world_width, world_height)
+  let distance_to_nest = torus_distance(
+    position, nest, world_width, world_height,
+  )
   if distance_to_nest < nest_arrival_range {
     {
       position,
@@ -109,7 +123,9 @@ fn execute_returning_behavior(
       food_delta_amount: 0.0,
     }
   } else {
-    let new_position = move_towards_target(position, nest, world_width, world_height, ant_speed)
+    let new_position = move_towards_target(
+      position, nest, world_width, world_height, ant_speed,
+    )
     let dx = nest.x - position.x
     let dy = nest.y - position.y
     let wrapped_dx = if dx > world_width / 2.0 {
@@ -128,11 +144,14 @@ fn execute_returning_behavior(
     }
     let new_direction = @math.atan2(wrapped_dy, wrapped_dx)
     let avoidance = avoid_collisions(
-      new_position, new_direction, ant_x, ant_y, ant_count, ant_index, world_width, world_height,
-      collision_avoidance_radius, 0.5,
+      new_position, new_direction, ant_x, ant_y, ant_count, ant_index, world_width,
+      world_height, collision_avoidance_radius, 0.5,
     )
     deposit_pheromone(
-      pheromone_to_food, grid_width, grid_height, position,
+      pheromone_to_food,
+      grid_width,
+      grid_height,
+      position,
       pheromone_deposit_amount * food_quality_multiplier(food_amount),
     )
     {
@@ -177,8 +196,13 @@ fn execute_foraging_behavior(
       grid_width, grid_height, world_width, world_height, pheromone_tracking_strength,
     )
   } else {
-    let food_position = { x: food_x[nearby_food_index], y: food_y[nearby_food_index] }
-    let distance_to_food = torus_distance(position, food_position, world_width, world_height)
+    let food_position = {
+      x: food_x[nearby_food_index],
+      y: food_y[nearby_food_index],
+    }
+    let distance_to_food = torus_distance(
+      position, food_position, world_width, world_height,
+    )
     if distance_to_food < food_collection_range {
       let new_amount = food_amount[nearby_food_index] - 1.0
       {
@@ -192,12 +216,20 @@ fn execute_foraging_behavior(
       }
     } else {
       let bias_move = move_with_bias(
-        rng, position, direction, food_position, world_width, world_height, ant_speed, 0.8,
-        food_approach_bias,
+        rng, position, direction, food_position, world_width, world_height, ant_speed,
+        0.8, food_approach_bias,
       )
       let avoidance = avoid_collisions(
-        bias_move.position, bias_move.direction, ant_x, ant_y, ant_count, ant_index, world_width,
-        world_height, collision_avoidance_radius, 0.5,
+        bias_move.position,
+        bias_move.direction,
+        ant_x,
+        ant_y,
+        ant_count,
+        ant_index,
+        world_width,
+        world_height,
+        collision_avoidance_radius,
+        0.5,
       )
       {
         position: avoidance.position,
@@ -229,21 +261,45 @@ fn execute_exploration(
   pheromone_tracking_strength : Double,
 ) -> AntBehaviorResult {
   let pheromone_direction = follow_pheromone(
-    pheromone_to_food, grid_width, grid_height, position, direction, world_width, world_height,
-    20.0, @math.PI / 4.0, 30.0, 0.1,
+    pheromone_to_food,
+    grid_width,
+    grid_height,
+    position,
+    direction,
+    world_width,
+    world_height,
+    20.0,
+    @math.PI / 4.0,
+    30.0,
+    0.1,
   )
   let direction_diff = (pheromone_direction - direction).abs()
-  let normalized_diff = @cmp.minimum(direction_diff, 2.0 * @math.PI - direction_diff)
-  let should_follow =
-    rng_next_double(rng) < pheromone_tracking_strength && normalized_diff > 0.1
+  let normalized_diff = @cmp.minimum(
+    direction_diff,
+    2.0 * @math.PI - direction_diff,
+  )
+  let should_follow = rng_next_double(rng) < pheromone_tracking_strength &&
+    normalized_diff > 0.1
   let move_result = if should_follow {
-    move_ant(rng, position, pheromone_direction, world_width, world_height, ant_speed, 0.5)
+    move_ant(
+      rng, position, pheromone_direction, world_width, world_height, ant_speed, 0.5,
+    )
   } else {
-    move_ant(rng, position, direction, world_width, world_height, ant_speed, 0.5)
+    move_ant(
+      rng, position, direction, world_width, world_height, ant_speed, 0.5,
+    )
   }
   let avoidance = avoid_collisions(
-    move_result.position, move_result.direction, ant_x, ant_y, ant_count, ant_index, world_width,
-    world_height, collision_avoidance_radius, 0.5,
+    move_result.position,
+    move_result.direction,
+    ant_x,
+    ant_y,
+    ant_count,
+    ant_index,
+    world_width,
+    world_height,
+    collision_avoidance_radius,
+    0.5,
   )
   {
     position: avoidance.position,

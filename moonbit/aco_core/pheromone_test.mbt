@@ -82,7 +82,13 @@ test "pheromone_strength respects the detection radius boundary" {
   // distance = sqrt((0-25)^2 + (0-15)^2) = sqrt(625 + 225) = sqrt(850) ≈ 29.15
   // Since 29.15 < 30.0, this cell should contribute
   grid[grid_index(2, 1, 10)] = 40.0
-  let strength_inside = pheromone_strength(grid, 10, 10, { x: 0.0, y: 0.0 }, 30.0)
+  let strength_inside = pheromone_strength(
+    grid,
+    10,
+    10,
+    { x: 0.0, y: 0.0 },
+    30.0,
+  )
   assert_true(strength_inside > 0.0)
 
   // Test 2: Cell (3, 0) is OUTSIDE the detection radius boundary
@@ -93,6 +99,12 @@ test "pheromone_strength respects the detection radius boundary" {
     grid[i] = 0.0
   }
   grid[grid_index(3, 0, 10)] = 40.0
-  let strength_outside = pheromone_strength(grid, 10, 10, { x: 0.0, y: 0.0 }, 30.0)
+  let strength_outside = pheromone_strength(
+    grid,
+    10,
+    10,
+    { x: 0.0, y: 0.0 },
+    30.0,
+  )
   assert_eq(strength_outside, 0.0)
 }

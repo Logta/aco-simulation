@@ -13,9 +13,28 @@ test "foraging ant with no nearby food moves and deposits no pheromone" {
   let pheromone_to_food = FixedArray::make(4800, 0.0)
   let pheromone_to_nest = FixedArray::make(4800, 0.0)
   let result = execute_ant_behavior(
-    rng, ant_x, ant_y, ant_direction, ant_has_food, ant_target_food_index, ant_food_amount,
-    0, 1, food_x, food_y, food_amount, 0, pheromone_to_food, pheromone_to_nest, 80, 60,
-    { x: 400.0, y: 300.0 }, 800.0, 600.0, 2.0, 0.7,
+    rng,
+    ant_x,
+    ant_y,
+    ant_direction,
+    ant_has_food,
+    ant_target_food_index,
+    ant_food_amount,
+    0,
+    1,
+    food_x,
+    food_y,
+    food_amount,
+    0,
+    pheromone_to_food,
+    pheromone_to_nest,
+    80,
+    60,
+    { x: 400.0, y: 300.0 },
+    800.0,
+    600.0,
+    2.0,
+    0.7,
   )
   assert_eq(result.has_food, false)
   assert_eq(result.food_delta_index, -1)
@@ -36,9 +55,28 @@ test "foraging ant collects food when within collection range" {
   let pheromone_to_food = FixedArray::make(4800, 0.0)
   let pheromone_to_nest = FixedArray::make(4800, 0.0)
   let result = execute_ant_behavior(
-    rng, ant_x, ant_y, ant_direction, ant_has_food, ant_target_food_index, ant_food_amount,
-    0, 1, food_x, food_y, food_amount, 1, pheromone_to_food, pheromone_to_nest, 80, 60,
-    { x: 400.0, y: 300.0 }, 800.0, 600.0, 2.0, 0.7,
+    rng,
+    ant_x,
+    ant_y,
+    ant_direction,
+    ant_has_food,
+    ant_target_food_index,
+    ant_food_amount,
+    0,
+    1,
+    food_x,
+    food_y,
+    food_amount,
+    1,
+    pheromone_to_food,
+    pheromone_to_nest,
+    80,
+    60,
+    { x: 400.0, y: 300.0 },
+    800.0,
+    600.0,
+    2.0,
+    0.7,
   )
   assert_eq(result.has_food, true)
   assert_eq(result.target_food_index, 0)
@@ -61,9 +99,28 @@ test "returning ant drops food and stops when close to the nest" {
   let pheromone_to_food = FixedArray::make(4800, 0.0)
   let pheromone_to_nest = FixedArray::make(4800, 0.0)
   let result = execute_ant_behavior(
-    rng, ant_x, ant_y, ant_direction, ant_has_food, ant_target_food_index, ant_food_amount,
-    0, 1, food_x, food_y, food_amount, 0, pheromone_to_food, pheromone_to_nest, 80, 60,
-    { x: 400.0, y: 300.0 }, 800.0, 600.0, 2.0, 0.7,
+    rng,
+    ant_x,
+    ant_y,
+    ant_direction,
+    ant_has_food,
+    ant_target_food_index,
+    ant_food_amount,
+    0,
+    1,
+    food_x,
+    food_y,
+    food_amount,
+    0,
+    pheromone_to_food,
+    pheromone_to_nest,
+    80,
+    60,
+    { x: 400.0, y: 300.0 },
+    800.0,
+    600.0,
+    2.0,
+    0.7,
   )
   assert_eq(result.has_food, false)
   assert_eq(result.target_food_index, -1)
@@ -85,9 +142,28 @@ test "returning ant away from the nest deposits toFood pheromone" {
   let pheromone_to_food = FixedArray::make(4800, 0.0)
   let pheromone_to_nest = FixedArray::make(4800, 0.0)
   let _ = execute_ant_behavior(
-    rng, ant_x, ant_y, ant_direction, ant_has_food, ant_target_food_index, ant_food_amount,
-    0, 1, food_x, food_y, food_amount, 0, pheromone_to_food, pheromone_to_nest, 80, 60,
-    { x: 400.0, y: 300.0 }, 800.0, 600.0, 2.0, 0.7,
+    rng,
+    ant_x,
+    ant_y,
+    ant_direction,
+    ant_has_food,
+    ant_target_food_index,
+    ant_food_amount,
+    0,
+    1,
+    food_x,
+    food_y,
+    food_amount,
+    0,
+    pheromone_to_food,
+    pheromone_to_nest,
+    80,
+    60,
+    { x: 400.0, y: 300.0 },
+    800.0,
+    600.0,
+    2.0,
+    0.7,
   )
   // ant at (100,100) -> grid cell (10, 10) in an 80x60 grid (cell size 10)
   assert_true(pheromone_to_food[grid_index(10, 10, 80)] > 0.0)

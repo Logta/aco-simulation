@@ -34,8 +34,7 @@ pub fn rng_new(seed : UInt) -> Rng {
 ///|
 fn rng_generate(rng : Rng) -> Unit {
   for i in 0..<mt19937_n {
-    let y =
-      (rng.state[i] & mt19937_upper_mask) |
+    let y = (rng.state[i] & mt19937_upper_mask) |
       (rng.state[(i + 1) % mt19937_n] & mt19937_lower_mask)
     let mut next = rng.state[(i + mt19937_m) % mt19937_n] ^ (y >> 1)
     if y % 2U != 0U {

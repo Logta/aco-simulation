@@ -6,9 +6,5 @@ import {
 }
 
 options(
-  "link": {
-    "wasm": {
-      "export-memory-name": "memory",
-    },
-  },
+  link: { "wasm": { "export-memory-name": "memory" } },
 )

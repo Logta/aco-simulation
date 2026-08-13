@@ -72,8 +72,10 @@ pub fn pheromone_strength(
       if gx >= 0 && gx < grid_width && gy >= 0 && gy < grid_height {
         let intensity = grid[grid_index(gx, gy, grid_width)]
         if intensity > 0.0 {
-          let cell_center_x = gx.to_double() * pheromone_cell_size + pheromone_cell_size / 2.0
-          let cell_center_y = gy.to_double() * pheromone_cell_size + pheromone_cell_size / 2.0
+          let cell_center_x = gx.to_double() * pheromone_cell_size +
+            pheromone_cell_size / 2.0
+          let cell_center_y = gy.to_double() * pheromone_cell_size +
+            pheromone_cell_size / 2.0
           let ddx = position.x - cell_center_x
           let ddy = position.y - cell_center_y
           let distance = (ddx * ddx + ddy * ddy).sqrt()

@@ -15,7 +15,9 @@ pub fn follow_pheromone(
   minimum_strength : Double,
 ) -> Double {
   let sensors : FixedArray[Double] = [
-    direction - sensor_angle, direction, direction + sensor_angle,
+    direction - sensor_angle,
+    direction,
+    direction + sensor_angle,
   ]
   let mut best_index = 0
   let mut best_strength = -1.0
@@ -25,7 +27,9 @@ pub fn follow_pheromone(
       x: position.x + @math.cos(angle) * sensor_distance,
       y: position.y + @math.sin(angle) * sensor_distance,
     }
-    let strength = pheromone_strength(grid, grid_width, grid_height, sensor_pos, detection_radius)
+    let strength = pheromone_strength(
+      grid, grid_width, grid_height, sensor_pos, detection_radius,
+    )
     if strength > best_strength {
       best_strength = strength
       best_index = i
@@ -53,7 +57,9 @@ pub fn find_nearest_food_index(
   let mut min_distance = max_distance
   for i in 0..<food_count {
     let food_position = { x: food_x[i], y: food_y[i] }
-    let distance = torus_distance(ant_position, food_position, world_width, world_height)
+    let distance = torus_distance(
+      ant_position, food_position, world_width, world_height,
+    )
     if distance < min_distance {
       nearest_index = i
       min_distance = distance

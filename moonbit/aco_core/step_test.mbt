@@ -13,9 +13,9 @@ test "step moves a single foraging ant and mutates its array in place" {
   let pheromone_to_food = FixedArray::make(4800, 0.0)
   let pheromone_to_nest = FixedArray::make(4800, 0.0)
   step(
-    rng, ant_x, ant_y, ant_direction, ant_has_food, ant_target_food_index, ant_food_amount, 1,
-    food_x, food_y, food_amount, 0, pheromone_to_food, pheromone_to_nest, 80, 60, 400.0, 300.0,
-    800.0, 600.0, 2.0, 0.7,
+    rng, ant_x, ant_y, ant_direction, ant_has_food, ant_target_food_index, ant_food_amount,
+    1, food_x, food_y, food_amount, 0, pheromone_to_food, pheromone_to_nest, 80,
+    60, 400.0, 300.0, 800.0, 600.0, 2.0, 0.7,
   )
   // moved away from the starting position (either x or y changed)
   assert_false(ant_x[0] == 100.0 && ant_y[0] == 100.0)

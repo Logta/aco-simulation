@@ -37,8 +37,8 @@ pub fn step(
   let result_food_amount = FixedArray::make(ant_count, -1.0)
   for i in 0..<ant_count {
     let result = execute_ant_behavior(
-      rng, ant_x, ant_y, ant_direction, ant_has_food, ant_target_food_index, ant_food_amount, i,
-      ant_count, food_x, food_y, food_amount, food_count, pheromone_to_food, pheromone_to_nest,
+      rng, ant_x, ant_y, ant_direction, ant_has_food, ant_target_food_index, ant_food_amount,
+      i, ant_count, food_x, food_y, food_amount, food_count, pheromone_to_food, pheromone_to_nest,
       grid_width, grid_height, nest, world_width, world_height, pheromone_deposit_amount,
       pheromone_tracking_strength,
     )

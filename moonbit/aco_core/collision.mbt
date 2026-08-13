@@ -24,7 +24,9 @@ pub fn avoid_collisions(
   for i in 0..<other_count {
     if i != self_index {
       let other_position = { x: other_x[i], y: other_y[i] }
-      let distance = torus_distance(position, other_position, world_width, world_height)
+      let distance = torus_distance(
+        position, other_position, world_width, world_height,
+      )
       if distance < avoidance_radius && distance > 0.0 {
         let dx = position.x - other_position.x
         let dy = position.y - other_position.y
@@ -56,7 +58,10 @@ pub fn avoid_collisions(
     { position, direction }
   } else {
     let avoidance_direction = @math.atan2(force_y, force_x)
-    let final_strength = @cmp.minimum(collision_count.to_double() * avoidance_strength, 1.0)
+    let final_strength = @cmp.minimum(
+      collision_count.to_double() * avoidance_strength,
+      1.0,
+    )
     let direction_diff = normalize_angle(avoidance_direction - direction)
     let new_direction = direction + direction_diff * final_strength
     let adjustment_strength = final_strength * 0.5

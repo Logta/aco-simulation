@@ -57,9 +57,10 @@ pub fn move_ant(
   let random_turn = (rng_next_double(rng) - 0.5) * random_turn_range
   let new_direction = direction + random_turn
   let new_position = torus_wrap(
-    { x: position.x + @math.cos(new_direction) * speed, y: position.y + @math.sin(
-        new_direction,
-      ) * speed },
+    {
+      x: position.x + @math.cos(new_direction) * speed,
+      y: position.y + @math.sin(new_direction) * speed,
+    },
     world_width,
     world_height,
   )
@@ -103,12 +104,14 @@ pub fn move_with_bias(
   } else if direction_to_target < -@math.PI {
     direction_to_target += 2.0 * @math.PI
   }
-  let new_direction =
-    direction + direction_to_target * bias_strength + random_turn * (1.0 - bias_strength)
+  let new_direction = direction +
+    direction_to_target * bias_strength +
+    random_turn * (1.0 - bias_strength)
   let new_position = torus_wrap(
-    { x: position.x + @math.cos(new_direction) * speed, y: position.y + @math.sin(
-        new_direction,
-      ) * speed },
+    {
+      x: position.x + @math.cos(new_direction) * speed,
+      y: position.y + @math.sin(new_direction) * speed,
+    },
     world_width,
     world_height,
   )

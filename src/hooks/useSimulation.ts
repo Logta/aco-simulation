@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useSimulationStore } from "../stores/simulation.store";
-import { executeSimulationStep, executePheromoneDacay } from "../lib/aco/simulation-engine";
-import type { SimulationUpdate } from "../lib/aco/simulation-engine";
+import { stepSimulation, decaySimulation } from "../lib/aco-wasm/adapter";
 
 const FRAME_DELAY_MS = 50;
 const PHEROMONE_DECAY_INTERVAL_MS = 500;
@@ -31,52 +30,15 @@ export const useSimulation = () => {
   };
 
   const performSimulationStep = (currentTime: number) => {
-    const {
-      ants,
-      foods,
-      pheromones,
-      nest,
-      worldWidth,
-      worldHeight,
-      antCount,
-      pheromoneDecayRate,
-      pheromoneDepositAmount,
-      pheromoneTrackingStrength,
-      speed,
-    } = simulationState;
+    const { pheromoneDepositAmount, pheromoneTrackingStrength, pheromoneDecayRate } =
+      useSimulationStore.getState();
 
-    const update = executeSimulationStep(
-      {
-        worldWidth,
-        worldHeight,
-        antCount,
-        pheromoneDecayRate,
-        pheromoneDepositAmount,
-        pheromoneTrackingStrength,
-        speed,
-      },
-      { ants, foods, pheromones, nest },
-    );
+    stepSimulation({ pheromoneDepositAmount, pheromoneTrackingStrength });
 
-    applyUpdate(update, currentTime);
-  };
-
-  const applyUpdate = (update: SimulationUpdate, currentTime: number) => {
-    useSimulationStore.setState((state) => {
-      const next: Partial<typeof state> = {};
-
-      if (update.ants) next.ants = update.ants;
-      if (update.foods) next.foods = update.foods;
-
-      let pheromones = update.pheromones ?? state.pheromones;
-      if (currentTime - lastDecayTimeRef.current > PHEROMONE_DECAY_INTERVAL_MS) {
-        pheromones = executePheromoneDacay(pheromones, state.pheromoneDecayRate);
-        lastDecayTimeRef.current = currentTime;
-      }
-      if (pheromones !== state.pheromones) next.pheromones = pheromones;
-
-      return next;
-    });
+    if (currentTime - lastDecayTimeRef.current > PHEROMONE_DECAY_INTERVAL_MS) {
+      decaySimulation(pheromoneDecayRate);
+      lastDecayTimeRef.current = currentTime;
+    }
   };
 
   useEffect(() => {
@@ -87,11 +49,10 @@ export const useSimulation = () => {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [
-    simulationState.isRunning,
-    simulationState.speed,
-    simulationState.ants,
-    simulationState.foods,
-    simulationState.pheromones,
-  ]);
+    // animateをdepsに含めると毎レンダーでループが再起動してしまう。
+    // WASM側のアリ/食料/フェロモンはZustandの再レンダリングと独立して変化するため、
+    // isRunning/speedの変化時のみ再起動すれば十分(ループ自体はrequestAnimationFrameで
+    // 毎フレーム回り続け、フレームごとに直接stepSimulation/decaySimulationを呼ぶ)。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [simulationState.isRunning, simulationState.speed]);
 };

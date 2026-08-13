@@ -26,7 +26,10 @@
     /* Path alias */
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+
+    /* Node types for test files */
+    "types": ["node"]
   },
   "include": ["src"]
 }

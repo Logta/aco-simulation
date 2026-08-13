@@ -82,9 +82,6 @@ const getState = (): AdapterState => {
 const f64 = (ptr: number, len: number): Float64Array =>
   new Float64Array(getState().wasm.memory.buffer, ptr, len);
 
-const i32 = (ptr: number, len: number): Int32Array =>
-  new Int32Array(getState().wasm.memory.buffer, ptr, len);
-
 const u8 = (ptr: number, len: number): Uint8Array =>
   new Uint8Array(getState().wasm.memory.buffer, ptr, len);
 
@@ -100,7 +97,8 @@ const instantiateStreamingFrom = async (response: Response): Promise<WasmExports
 
 /** 本番用: Viteが解決した`.wasm`のURLからロードする。 */
 export const loadAdapter = async (wasmUrl: URL): Promise<void> => {
-  const wasm = await instantiateStreamingFrom(fetch(wasmUrl));
+  const response = await fetch(wasmUrl);
+  const wasm = await instantiateStreamingFrom(response);
   state = createEmptyState(wasm);
 };
 

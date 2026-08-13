@@ -26,9 +26,10 @@ describe("useSimulation", () => {
     }).not.toThrow();
 
     // useSimulationはuseEffect内でrequestAnimationFrameの再帰ループを開始する。
-    // 明示的にunmountしないと(bun testの共有モジュールレジストリ配下では
-    // 特に)このループが後続のテストファイルまで動き続け、実アダプタの
-    // モジュール単位状態を汚染してしまう。
+    // 以前は(bun testの共有モジュールレジストリ配下では特に)このループが
+    // 後続のテストファイルまで動き続け、実アダプタのモジュール単位状態を
+    // 汚染してしまう問題があったため、明示的にunmountしている。
+    // bun testは廃止されたが、今も明示的なunmountは防御的慣行として有効。
     renderResult?.unmount();
   });
 });

@@ -33,6 +33,16 @@ describe("useSimulation", () => {
   });
 
   it("should not throw when rendered", () => {
-    expect(() => renderHook(() => useSimulation())).not.toThrow();
+    let renderResult: ReturnType<typeof renderHook> | undefined;
+
+    expect(() => {
+      renderResult = renderHook(() => useSimulation());
+    }).not.toThrow();
+
+    // useSimulationはuseEffect内でrequestAnimationFrameの再帰ループを開始する。
+    // 明示的にunmountしないと(bun testの共有モジュールレジストリ配下では
+    // 特に)このループが後続のテストファイルまで動き続け、実アダプタの
+    // モジュール単位状態を汚染してしまう。
+    renderResult?.unmount();
   });
 });

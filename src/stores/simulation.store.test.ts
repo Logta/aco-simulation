@@ -1,20 +1,33 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 
-vi.mock("../lib/aco-wasm/adapter", () => ({
-  initializeSimulation: vi.fn(),
-  reinitializeAnts: vi.fn(),
-  addFood: vi.fn(),
-  addRandomFoods: vi.fn(),
-  resetAll: vi.fn(),
-}));
-
+// このファイルはstoreがadapterに正しく処理を委譲することだけを検証したいため、
+// adapterの実装は呼び出したくない。
+//
+// 以前はvi.mock(モジュール全体を工場関数の戻り値で置き換える)を使っていたが、
+// bun testは全テストファイルを1つのプロセス・1つの共有モジュールレジストリで
+// 実行するため、vi.mockはbunの mock.module 相当として動作し、このファイルの
+// スコープを超えてadapterモジュールのexportsをプロセス全体で永続的に上書き
+// してしまっていた。その結果、src/lib/aco-wasm/adapter.test.tsなど本物の
+// adapterを使う他のテストファイルまでこの空のモック関数を掴んでしまい、
+// テストファイル単体では再現しないクロスファイルの状態汚染を引き起こしていた
+// (vitestはテストファイルごとに独立したモジュールグラフを持つため、この問題は
+// vitest実行時には表面化しない)。
+//
+// vi.spyOn + afterEachでのmockRestoreはモジュールの特定exportだけを一時的に
+// 差し替え、テスト終了後に元の実装へ確実に戻す。この仕組みはvitest/bunのどちら
+// でも同じように動作し、他のテストファイルへ影響を漏らさない。
 import * as adapter from "../lib/aco-wasm/adapter";
 import { useSimulationStore } from "./simulation.store";
 
 describe("useSimulationStore", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.spyOn(adapter, "initializeSimulation").mockImplementation(() => {});
+    vi.spyOn(adapter, "reinitializeAnts").mockImplementation(() => {});
+    vi.spyOn(adapter, "addFood").mockImplementation(() => {});
+    vi.spyOn(adapter, "addRandomFoods").mockImplementation(() => {});
+    vi.spyOn(adapter, "resetAll").mockImplementation(() => {});
+
     useSimulationStore.setState({
       nest: { x: 400, y: 300 },
       isRunning: false,
@@ -26,6 +39,10 @@ describe("useSimulationStore", () => {
       worldWidth: 800,
       worldHeight: 600,
     });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe("initializeSimulation", () => {

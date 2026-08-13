@@ -49,10 +49,5 @@ export const useSimulation = () => {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-    // animateをdepsに含めると毎レンダーでループが再起動してしまう。
-    // WASM側のアリ/食料/フェロモンはZustandの再レンダリングと独立して変化するため、
-    // isRunning/speedの変化時のみ再起動すれば十分(ループ自体はrequestAnimationFrameで
-    // 毎フレーム回り続け、フレームごとに直接stepSimulation/decaySimulationを呼ぶ)。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [simulationState.isRunning, simulationState.speed]);
 };

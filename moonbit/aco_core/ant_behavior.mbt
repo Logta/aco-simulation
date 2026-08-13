@@ -147,6 +147,10 @@ fn execute_returning_behavior(
       new_position, new_direction, ant_x, ant_y, ant_count, ant_index, world_width,
       world_height, collision_avoidance_radius, 0.5,
     )
+    // 意図的なTS参照実装からの乖離(裁定済み): TS版は1フレーム内で同一セルに
+    // 複数のアリが付与すると最後の1匹分しか残らない(last-write-wins)が、これは
+    // TS側のバグと判断し、MoonBit版は全アリ分を加算する。TSパリティ確認時に
+    // リグレッションと誤認しないこと。
     deposit_pheromone(
       pheromone_to_food,
       grid_width,

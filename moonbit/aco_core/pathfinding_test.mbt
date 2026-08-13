@@ -41,6 +41,31 @@ test "follow_pheromone keeps direction unchanged when the strongest signal is ce
 }
 
 ///|
+test "follow_pheromone steers across the torus boundary" {
+  // world 100x100 / grid 10x10. Pheromone in cell (9,5) -> center (95.0, 55.0),
+  // against the x=100 edge. The ant sits against the opposite edge at (2.0,55.0)
+  // heading 3π/4 (down-left). Its right sensor (direction + sensor_angle = π)
+  // lands at (-18.0, 55.0) -> wrapped (82.0, 55.0), only 13.0 away from the
+  // pheromone on the torus, so it must win and steer the ant to π.
+  let grid = FixedArray::make(100, 0.0)
+  grid[grid_index(9, 5, 10)] = 100.0
+  let result = follow_pheromone(
+    grid,
+    10,
+    10,
+    { x: 2.0, y: 55.0 },
+    3.0 * @math.PI / 4.0,
+    100.0,
+    100.0,
+    20.0,
+    @math.PI / 4.0,
+    30.0,
+    0.1,
+  )
+  assert_true((result - @math.PI).abs() < 1.0e-9)
+}
+
+///|
 test "find_nearest_food_index returns the closest food among several" {
   let food_x : FixedArray[Double] = [10.0, 5.0, 20.0]
   let food_y : FixedArray[Double] = [0.0, 0.0, 0.0]

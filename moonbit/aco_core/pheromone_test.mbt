@@ -60,14 +60,69 @@ test "pheromone_strength sums contributions within the detection radius" {
   let grid = FixedArray::make(100, 0.0)
   // cell (1,0) covers position (10..20, 0..10); put 60 intensity there.
   grid[grid_index(1, 0, 10)] = 60.0
-  let strength = pheromone_strength(grid, 10, 10, { x: 0.0, y: 0.0 }, 30.0)
+  let strength = pheromone_strength(
+    grid,
+    10,
+    10,
+    { x: 0.0, y: 0.0 },
+    100.0,
+    100.0,
+    30.0,
+  )
   assert_true(strength > 0.0)
+}
+
+///|
+test "pheromone_strength detects a pheromone across the torus boundary" {
+  // world 100x100 / grid 10x10 / cell size 10.
+  // Pheromone sits in cell (9,5) -> center (95.0, 55.0), i.e. hard against the
+  // x=100 edge. The query position sits against the OPPOSITE edge (x=2.0).
+  // Plain (non-torus) distance is 93.0 -> far outside the 30.0 radius, but the
+  // torus distance is min(93.0, 100.0-93.0) = 7.0 -> well inside it.
+  let grid = FixedArray::make(100, 0.0)
+  grid[grid_index(9, 5, 10)] = 100.0
+  let strength = pheromone_strength(
+    grid,
+    10,
+    10,
+    { x: 2.0, y: 55.0 },
+    100.0,
+    100.0,
+    30.0,
+  )
+  // 100.0 / (1.0 + 7.0) = 12.5
+  assert_true(strength > 0.0)
+  assert_true((strength - 12.5).abs() < 1.0e-9)
+}
+
+///|
+test "pheromone_strength counts each cell once when the scan wraps around" {
+  // world 40x40 / grid 4x4. cell_radius for radius 30.0 is 4, so the naive
+  // scan window (9 cells wide) is wider than the grid itself; without clamping
+  // the span, modulo-wrapping would visit the same cell several times and
+  // inflate the total.
+  let grid = FixedArray::make(16, 0.0)
+  grid[grid_index(0, 0, 4)] = 100.0
+  let strength = pheromone_strength(
+    grid,
+    4,
+    4,
+    { x: 5.0, y: 5.0 },
+    40.0,
+    40.0,
+    30.0,
+  )
+  // distance 0.0 from the cell center -> 100.0 / (1.0 + 0.0), counted once.
+  assert_true((strength - 100.0).abs() < 1.0e-9)
 }
 
 ///|
 test "pheromone_strength is zero for an empty grid" {
   let grid = FixedArray::make(100, 0.0)
-  assert_eq(pheromone_strength(grid, 10, 10, { x: 0.0, y: 0.0 }, 30.0), 0.0)
+  assert_eq(
+    pheromone_strength(grid, 10, 10, { x: 0.0, y: 0.0 }, 100.0, 100.0, 30.0),
+    0.0,
+  )
 }
 
 ///|
@@ -87,6 +142,8 @@ test "pheromone_strength respects the detection radius boundary" {
     10,
     10,
     { x: 0.0, y: 0.0 },
+    100.0,
+    100.0,
     30.0,
   )
   assert_true(strength_inside > 0.0)
@@ -104,6 +161,8 @@ test "pheromone_strength respects the detection radius boundary" {
     10,
     10,
     { x: 0.0, y: 0.0 },
+    100.0,
+    100.0,
     30.0,
   )
   assert_eq(strength_outside, 0.0)

@@ -27,8 +27,10 @@ pub fn follow_pheromone(
       x: position.x + @math.cos(angle) * sensor_distance,
       y: position.y + @math.sin(angle) * sensor_distance,
     }
+    // TS版と同じく、センサーからフェロモンまでの距離はトーラス距離で測る
+    // (`pheromone_strength`が world_width/world_height を使って処理する)。
     let strength = pheromone_strength(
-      grid, grid_width, grid_height, sensor_pos, detection_radius,
+      grid, grid_width, grid_height, sensor_pos, world_width, world_height, detection_radius,
     )
     if strength > best_strength {
       best_strength = strength
@@ -44,6 +46,10 @@ pub fn follow_pheromone(
 
 ///|
 /// 最も近い食べ物のインデックスを返す(トーラス距離基準)。見つからない場合は-1。
+///
+/// 意図的なTS参照実装からの乖離(裁定済み): TS版は`array.find()`で配列順の
+/// 最初の1件を選ぶが、これは意図的な設計ではなく偶発的な実装詳細と判断した。
+/// MoonBit版は最近傍を選ぶ。TSパリティ確認時にリグレッションと誤認しないこと。
 pub fn find_nearest_food_index(
   ant_position : Position,
   food_x : FixedArray[Double],

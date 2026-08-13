@@ -82,9 +82,6 @@ const getState = (): AdapterState => {
 const f64 = (ptr: number, len: number): Float64Array =>
   new Float64Array(getState().wasm.memory.buffer, ptr, len);
 
-const i32 = (ptr: number, len: number): Int32Array =>
-  new Int32Array(getState().wasm.memory.buffer, ptr, len);
-
 const u8 = (ptr: number, len: number): Uint8Array =>
   new Uint8Array(getState().wasm.memory.buffer, ptr, len);
 

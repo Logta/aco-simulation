@@ -1,0 +1,10 @@
+pkgtype(kind: "foreign_library")
+
+import {
+  "moonbitlang/core/math",
+  "moonbitlang/core/cmp",
+}
+
+options(
+  link: { "wasm": { "export-memory-name": "memory" } },
+)

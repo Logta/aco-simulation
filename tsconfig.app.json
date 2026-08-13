@@ -24,10 +24,12 @@
     "noUncheckedSideEffectImports": true,
 
     /* Path alias */
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+
+    /* Node types for test files */
+    "types": ["node"]
   },
   "include": ["src"]
 }

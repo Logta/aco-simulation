@@ -46,6 +46,13 @@ run = "bun run test:coverage"
 description = "依存関係をインストール"
 run = "bun install"
 
+[tasks."build:wasm"]
+description = "MoonBitコアをwasmでビルドしsrc/wasm/にコピー"
+run = """
+cd moonbit/aco_core && moon build --target wasm --release
+cp _build/wasm/release/build/aco_core.wasm ../../src/wasm/aco_core.wasm
+"""
+
 [settings]
 experimental = true
 minimum_release_age = "3d"

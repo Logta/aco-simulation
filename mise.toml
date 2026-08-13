@@ -49,6 +49,10 @@ description = "テストカバレッジを計測"
 dir = "packages/app"
 run = "bun run test:coverage"
 
+[tasks."test:e2e"]
+description = "Playwrightでブラウザ実地確認を自動実行"
+run = "bunx playwright test"
+
 [tasks.install]
 description = "依存関係をインストール"
 run = "bun install"

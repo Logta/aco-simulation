@@ -190,7 +190,12 @@ export const initializeSimulation = (config: SimulationInitConfig): void => {
   s.nest = config.nest;
 };
 
-/** アリだけを再生成し、フェロモングリッドをクリアする。食料は変更しない。 */
+/**
+ * アリだけを再生成し、フェロモングリッドをクリアする。食料は変更しない。
+ * フェロモングリッドは既存のポインタをそのまま使い回し、内容をゼロクリアするだけに留める
+ * (グリッドサイズはアリ数に依存しないため再確保は不要。スライダー操作のように高頻度に
+ * 呼ばれる場合でもWASM線形メモリのリークを最小限に抑える)。
+ */
 export const reinitializeAnts = (antCount: number): void => {
   const s = getState();
   const { wasm } = s;
@@ -202,8 +207,6 @@ export const reinitializeAnts = (antCount: number): void => {
   const antHasFoodPtr = wasm.alloc_u8(antCount);
   const antTargetPtr = wasm.alloc_i32(antCount);
   const antFoodAmountPtr = wasm.alloc_f64(antCount);
-  const pheromoneToFoodPtr = wasm.alloc_f64(gridCells);
-  const pheromoneToNestPtr = wasm.alloc_f64(gridCells);
 
   const x = new Float64Array(wasm.memory.buffer, antXPtr, antCount);
   const y = new Float64Array(wasm.memory.buffer, antYPtr, antCount);
@@ -221,6 +224,10 @@ export const reinitializeAnts = (antCount: number): void => {
     foodAmount[i] = -1;
   }
 
+  // 新規確保はせず、既存のフェロモングリッドをその場でゼロクリアする(ポインタは不変)。
+  f64(s.pheromone.toFood, gridCells).fill(0);
+  f64(s.pheromone.toNest, gridCells).fill(0);
+
   s.antCount = antCount;
   s.ant = {
     x: antXPtr,
@@ -230,7 +237,6 @@ export const reinitializeAnts = (antCount: number): void => {
     targetFoodIndex: antTargetPtr,
     foodAmount: antFoodAmountPtr,
   };
-  s.pheromone = { toFood: pheromoneToFoodPtr, toNest: pheromoneToNestPtr };
 };
 
 /** 食料を1件追加する(生存中の食料はそのまま新しい配列にコピーする)。 */

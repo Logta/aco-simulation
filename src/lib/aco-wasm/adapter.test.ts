@@ -63,6 +63,26 @@ describe("reinitializeAnts", () => {
     expect(view.foodCount).toBe(1);
     expect(view.foodX[0]).toBe(100);
   });
+
+  it("zeroes the pheromone grids in place without reallocating them (avoids leaking WASM memory on repeated calls, e.g. slider drags)", () => {
+    initializeSimulation({ antCount: 3, nest: { x: 400, y: 300 }, worldWidth: 800, worldHeight: 600 });
+    const before = getRenderView();
+    // フェロモングリッドに直接値を書き込む(テスト専用の内部アクセス)。
+    before.pheromoneToFood[10] = 42;
+    before.pheromoneToNest[20] = 42;
+    const toFoodOffsetBefore = before.pheromoneToFood.byteOffset;
+    const toNestOffsetBefore = before.pheromoneToNest.byteOffset;
+
+    reinitializeAnts(7);
+
+    const after = getRenderView();
+    // ポインタ(バッファ内オフセット)は変わらない = 再確保されていない。
+    expect(after.pheromoneToFood.byteOffset).toBe(toFoodOffsetBefore);
+    expect(after.pheromoneToNest.byteOffset).toBe(toNestOffsetBefore);
+    // 内容はゼロクリアされている。
+    expect(after.pheromoneToFood.every((v) => v === 0)).toBe(true);
+    expect(after.pheromoneToNest.every((v) => v === 0)).toBe(true);
+  });
 });
 
 describe("addFood", () => {

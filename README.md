@@ -31,7 +31,9 @@ mise run install
 mise run dev
 ```
 
-その他のタスク一覧は `mise tasks` で確認できます(`build` / `lint` / `format` / `preview` / `test` / `test:bun` / `test:ui` / `test:coverage` / `build:wasm`)。
+その他のタスク一覧は `mise tasks` で確認できます(`build` / `lint` / `format` / `preview` / `test` / `test:ui` / `test:coverage` / `test:e2e` / `build:wasm`)。
+
+`test:e2e`はPlaywrightによるブラウザ実地確認(読み込み→描画→操作)を自動実行する。初回実行前に`mise exec -- bunx playwright install chromium`でブラウザバイナリを取得しておく必要がある(`moon` CLIと同様、npm経由ではなく専用のダウンローダーを使うため、`minimumReleaseAge`ゲートの対象外)。
 
 ## MoonBitコアの変更
 

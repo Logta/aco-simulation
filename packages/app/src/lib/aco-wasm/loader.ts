@@ -7,8 +7,20 @@ const instantiate = async (bytes: ArrayBuffer): Promise<WasmExports> => {
 };
 
 const instantiateStreamingFrom = async (response: Response): Promise<WasmExports> => {
-  const { instance } = await WebAssembly.instantiateStreaming(response, {});
-  return instance.exports as unknown as WasmExports;
+  // 一部の静的ホスティングは.wasmを正しいMIMEタイプ(application/wasm)で配信せず、
+  // instantiateStreamingが失敗することがある。streamingを試みる前にレスポンスを
+  // clone()しておき、失敗時はボディ全体を読み込んでからinstantiateにフォールバックする
+  // (streaming実行後はレスポンスボディが既に消費されている可能性があるため、
+  // フォールバック用のcloneは必ずstreamingを試みる前に取得する)。
+  const fallbackResponse = response.clone();
+  try {
+    const { instance } = await WebAssembly.instantiateStreaming(response, {});
+    return instance.exports as unknown as WasmExports;
+  } catch {
+    const bytes = await fallbackResponse.arrayBuffer();
+    const { instance } = await WebAssembly.instantiate(bytes, {});
+    return instance.exports as unknown as WasmExports;
+  }
 };
 
 /** 本番用: Viteが解決した`.wasm`のURLからロードする。 */

@@ -65,7 +65,7 @@ export const initializeSimulation = (config: SimulationInitConfig): void => {
   s.pheromone = { toFood: pheromoneToFoodPtr, toNest: pheromoneToNestPtr };
   s.worldWidth = config.worldWidth;
   s.worldHeight = config.worldHeight;
-  s.nest = config.nest;
+  s.nest = { ...config.nest };
 };
 
 /**

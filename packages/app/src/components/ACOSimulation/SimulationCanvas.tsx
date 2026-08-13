@@ -204,7 +204,10 @@ export const SimulationCanvas = ({ width, height }: SimulationCanvasProps) => {
     const pheromoneCtx = pheromoneCtxRef.current;
     const staticCtx = staticCtxRef.current;
 
-    if (!canvas || !mainCtx) return;
+    if (!canvas || !mainCtx) {
+      animationFrameRef.current = requestAnimationFrame(render);
+      return;
+    }
 
     const view = getRenderView();
 

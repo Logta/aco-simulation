@@ -34,11 +34,6 @@ description = "vitest でテストを実行"
 dir = "packages/app"
 run = "bun run test"
 
-[tasks."test:bun"]
-description = "bun test でテストを実行"
-dir = "packages/app"
-run = "bun run test:bun"
-
 [tasks."test:ui"]
 description = "vitest UI を起動"
 dir = "packages/app"

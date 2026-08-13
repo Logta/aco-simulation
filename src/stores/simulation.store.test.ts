@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 
-vi.mock("@/lib/aco-wasm/adapter", () => ({
+vi.mock("../lib/aco-wasm/adapter", () => ({
   initializeSimulation: vi.fn(),
   reinitializeAnts: vi.fn(),
   addFood: vi.fn(),
@@ -9,7 +9,7 @@ vi.mock("@/lib/aco-wasm/adapter", () => ({
   resetAll: vi.fn(),
 }));
 
-import * as adapter from "@/lib/aco-wasm/adapter";
+import * as adapter from "../lib/aco-wasm/adapter";
 import { useSimulationStore } from "./simulation.store";
 
 describe("useSimulationStore", () => {

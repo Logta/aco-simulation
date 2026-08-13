@@ -3,7 +3,7 @@ import { renderHook } from "@testing-library/react";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { useSimulation } from "./useSimulation";
-import { loadAdapterFromBytes, initializeSimulation } from "@/lib/aco-wasm/adapter";
+import { loadAdapterFromBytes, initializeSimulation } from "../lib/aco-wasm/adapter";
 
 // bun-test-setup.tsが提供するjsdom環境はrequestAnimationFrame/cancelAnimationFrameを
 // globalに公開していないため、このテストファイル内に限定したポリフィルを用意する

@@ -16,7 +16,7 @@ export const ACOSimulation = () => {
     if (isInitialized.current) return;
     isInitialized.current = true;
 
-    const wasmUrl = new URL("../../wasm/aco_core.wasm", import.meta.url);
+    const wasmUrl = new URL("../../../../wasm-core/dist/aco_core.wasm", import.meta.url);
     loadAdapter(wasmUrl)
       .then(() => {
         initializeSimulation();

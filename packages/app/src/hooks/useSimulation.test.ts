@@ -20,7 +20,7 @@ if (typeof globalThis.cancelAnimationFrame === "undefined") {
 }
 
 beforeAll(async () => {
-  const wasmBytes = readFileSync(resolve(import.meta.dirname, "../wasm/aco_core.wasm"));
+  const wasmBytes = readFileSync(resolve(import.meta.dirname, "../../../wasm-core/dist/aco_core.wasm"));
   await loadAdapterFromBytes(
     wasmBytes.buffer.slice(wasmBytes.byteOffset, wasmBytes.byteOffset + wasmBytes.byteLength),
   );

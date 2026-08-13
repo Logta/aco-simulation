@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { loadAdapterFromBytes, initializeSimulation, getRenderView, reinitializeAnts, addFood, addRandomFoods, resetAll, stepSimulation, decaySimulation } from "./adapter";
 
-const wasmBytes = readFileSync(resolve(import.meta.dirname, "../../wasm/aco_core.wasm"));
+const wasmBytes = readFileSync(resolve(import.meta.dirname, "../../../../wasm-core/dist/aco_core.wasm"));
 
 beforeEach(async () => {
   await loadAdapterFromBytes(wasmBytes.buffer.slice(wasmBytes.byteOffset, wasmBytes.byteOffset + wasmBytes.byteLength));

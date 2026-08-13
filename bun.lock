@@ -1,20 +1,9 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "aco-simulation",
-      "dependencies": {
-        "@radix-ui/react-label": "^2.1.15",
-        "@radix-ui/react-slider": "^1.4.7",
-        "@tanstack/react-router": "^1.170.24",
-        "class-variance-authority": "^0.7.1",
-        "clsx": "^2.1.1",
-        "lucide-react": "^1.30.0",
-        "react": "^19.2.8",
-        "react-dom": "^19.2.8",
-        "tailwind-merge": "^3.6.0",
-        "zustand": "^5.0.14",
-      },
       "devDependencies": {
         "@tailwindcss/postcss": "^4.3.3",
         "@testing-library/jest-dom": "^7.0.0",
@@ -36,8 +25,32 @@
         "vitest": "^4.1.10",
       },
     },
+    "packages/app": {
+      "name": "@aco/app",
+      "version": "0.0.0",
+      "dependencies": {
+        "@radix-ui/react-label": "^2.1.15",
+        "@radix-ui/react-slider": "^1.4.7",
+        "@tanstack/react-router": "^1.170.24",
+        "class-variance-authority": "^0.7.1",
+        "clsx": "^2.1.1",
+        "lucide-react": "^1.30.0",
+        "react": "^19.2.8",
+        "react-dom": "^19.2.8",
+        "tailwind-merge": "^3.6.0",
+        "zustand": "^5.0.14",
+      },
+    },
+    "packages/wasm-core": {
+      "name": "@aco/wasm-core",
+      "version": "0.0.0",
+    },
   },
   "packages": {
+    "@aco/app": ["@aco/app@workspace:packages/app"],
+
+    "@aco/wasm-core": ["@aco/wasm-core@workspace:packages/wasm-core"],
+
     "@adobe/css-tools": ["@adobe/css-tools@4.4.4", "", {}, "sha512-Elp+iwUx5rN5+Y8xLt5/GRoG20WGoDCQ/1Fb+1LiGtvwbDavuSk0jhD/eZdckHAuzcDzccnkv+rEjyWfRx18gg=="],
 
     "@alloc/quick-lru": ["@alloc/quick-lru@5.2.0", "", {}, "sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw=="],

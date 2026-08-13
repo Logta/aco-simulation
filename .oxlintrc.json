@@ -9,5 +9,9 @@
     "builtin": true,
     "browser": true
   },
-  "ignorePatterns": ["packages/app/dist", "packages/app/src/routeTree.gen.ts", "packages/wasm-core/_build"]
+  "ignorePatterns": [
+    "packages/app/dist",
+    "packages/app/src/routeTree.gen.ts",
+    "packages/wasm-core/_build"
+  ]
 }

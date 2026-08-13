@@ -1,6 +1,3 @@
-[test]
-preload = ["./bun-test-setup.ts"]
-
 [install]
 # 3日以上前に公開されたバージョンのみインストール
 minimumReleaseAge = 259200 # 秒

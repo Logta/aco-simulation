@@ -5,8 +5,8 @@
 //
 // 実行方法(リポジトリルート / どのディレクトリからでも可):
 //
-//     cd moonbit/aco_core && moon build --target wasm && cd -
-//     node moonbit/aco_core/scripts/ffi-smoke-test.mjs
+//     cd packages/wasm-core && moon build --target wasm && cd -
+//     node packages/wasm-core/scripts/ffi-smoke-test.mjs
 //
 // (.wasm のパスはこのスクリプトの位置を基準に解決するため、
 //  カレントディレクトリに依存しない)

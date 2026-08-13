@@ -1,6 +1,20 @@
-# React + TypeScript + Vite
+# aco-simulation
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+蟻コロニー最適化(ACO)アルゴリズムのシミュレーション。シミュレーションのホットパスはMoonBit(WebAssembly)で実装され、Reactアプリから利用する。
+
+## ディレクトリ構成
+
+```
+aco-simulation/
+├─ packages/
+│  ├─ wasm-core/    # MoonBitソース。シミュレーションのホットパス(アリの行動計算・
+│  │                 # フェロモン処理)を実装し、wasmにビルドする。dist/aco_core.wasm
+│  │                 # はビルド成果物としてリポジトリにコミットされており、moon
+│  │                 # ツールチェーンがなくてもアプリを動かせる。
+│  └─ app/           # Reactアプリ本体。packages/wasm-core/dist/aco_core.wasmを
+│                     # ロードしてシミュレーションを実行・描画する。
+└─ mise.toml         # ツール・タスク管理
+```
 
 ## 開発環境のセットアップ
 
@@ -17,70 +31,14 @@ mise run install
 mise run dev
 ```
 
-その他のタスク一覧は `mise tasks` で確認できます(`build` / `lint` / `preview` / `test` / `test:bun` / `test:ui` / `test:coverage`)。
+その他のタスク一覧は `mise tasks` で確認できます(`build` / `lint` / `format` / `preview` / `test` / `test:ui` / `test:coverage` / `test:e2e` / `build:wasm`)。
 
-Currently, two official plugins are available:
+`test:e2e`はPlaywrightによるブラウザ実地確認(読み込み→描画→操作)を自動実行する。初回実行前に`mise exec -- bunx playwright install chromium`でブラウザバイナリを取得しておく必要がある(`moon` CLIと同様、npm経由ではなく専用のダウンローダーを使うため、`minimumReleaseAge`ゲートの対象外)。
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## MoonBitコアの変更
 
-## Expanding the ESLint configuration
+`packages/wasm-core/`配下のMoonBitソースを変更した場合は、[moon CLI](https://www.moonbitlang.com/download/)をインストールした上で以下を実行し、wasmビルド成果物を再生成してコミットする:
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default tseslint.config([
-  globalIgnores(["dist"]),
-  {
-    files: ["**/*.{ts,tsx}"],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from "eslint-plugin-react-x";
-import reactDom from "eslint-plugin-react-dom";
-
-export default tseslint.config([
-  globalIgnores(["dist"]),
-  {
-    files: ["**/*.{ts,tsx}"],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs["recommended-typescript"],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
+```bash
+mise run build:wasm
 ```

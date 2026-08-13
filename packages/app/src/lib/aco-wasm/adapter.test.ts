@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { loadAdapterFromBytes, initializeSimulation, getRenderView, reinitializeAnts, addFood, addRandomFoods, resetAll, stepSimulation, decaySimulation } from "./adapter";
+import { loadAdapter, loadAdapterFromBytes, initializeSimulation, getRenderView, reinitializeAnts, addFood, addRandomFoods, resetAll, stepSimulation, decaySimulation } from "./adapter";
 
-const wasmBytes = readFileSync(resolve(import.meta.dirname, "../../wasm/aco_core.wasm"));
+const wasmBytes = readFileSync(resolve(import.meta.dirname, "../../../../wasm-core/dist/aco_core.wasm"));
 
 beforeEach(async () => {
   await loadAdapterFromBytes(wasmBytes.buffer.slice(wasmBytes.byteOffset, wasmBytes.byteOffset + wasmBytes.byteLength));
@@ -171,5 +171,36 @@ describe("decaySimulation", () => {
     decaySimulation(0.9);
 
     expect(getRenderView().pheromoneToFood[42]).toBeLessThan(50);
+  });
+});
+
+describe("loadAdapter", () => {
+  it("falls back to non-streaming instantiate when instantiateStreaming fails (e.g. wrong MIME type)", async () => {
+    const originalFetch = globalThis.fetch;
+    const originalInstantiateStreaming = WebAssembly.instantiateStreaming;
+
+    // instantiateStreamingを常に失敗させ、フォールバック経路が使われることを確認する
+    // (静的ホスティングが.wasmを誤ったMIMEタイプで配信するケースを模す)。
+    WebAssembly.instantiateStreaming = (() =>
+      Promise.reject(new Error("simulated streaming failure"))) as typeof WebAssembly.instantiateStreaming;
+    const wasmArrayBuffer = wasmBytes.buffer.slice(
+      wasmBytes.byteOffset,
+      wasmBytes.byteOffset + wasmBytes.byteLength,
+    );
+    globalThis.fetch = (async () =>
+      new Response(wasmArrayBuffer, {
+        headers: { "content-type": "text/plain" },
+      })) as typeof fetch;
+
+    try {
+      await expect(loadAdapter(new URL("http://localhost/dummy.wasm"))).resolves.toBeUndefined();
+
+      // フォールバック経由でもロードが完了し、通常通り初期化できることを確認する。
+      initializeSimulation({ antCount: 1, nest: { x: 400, y: 300 }, worldWidth: 800, worldHeight: 600 });
+      expect(getRenderView().antCount).toBe(1);
+    } finally {
+      WebAssembly.instantiateStreaming = originalInstantiateStreaming;
+      globalThis.fetch = originalFetch;
+    }
   });
 });

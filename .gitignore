@@ -8,8 +8,11 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-dist
-dist-ssr
+packages/app/dist
+packages/app/dist-ssr
+test-results
+playwright-report
+blob-report
 *.local
 
 # Git worktrees / subagent-driven-development scratch

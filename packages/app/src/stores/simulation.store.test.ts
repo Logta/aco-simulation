@@ -15,8 +15,10 @@ import { act, renderHook } from "@testing-library/react";
 // vitest実行時には表面化しない)。
 //
 // vi.spyOn + afterEachでのmockRestoreはモジュールの特定exportだけを一時的に
-// 差し替え、テスト終了後に元の実装へ確実に戻す。この仕組みはvitest/bunのどちら
-// でも同じように動作し、他のテストファイルへ影響を漏らさない。
+// 差し替え、テスト終了後に元の実装へ確実に戻す。この仕組みはvitest/bun間での
+// 互換性を考慮して採用され、モジュール分離セマンティクスに依存しない設計により
+// 他のテストファイルへ影響を漏らさない。bun testはプロジェクトから廃止されたが、
+// このアプローチの有効性は変わらない。
 import * as adapter from "../lib/aco-wasm/adapter";
 import { useSimulationStore } from "./simulation.store";
 

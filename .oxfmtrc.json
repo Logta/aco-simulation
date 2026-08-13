@@ -1,4 +1,10 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
-  "ignorePatterns": ["dist", "src/routeTree.gen.ts"]
+  "ignorePatterns": [
+    "packages/app/dist",
+    "packages/app/src/routeTree.gen.ts",
+    "packages/wasm-core/_build",
+    "test-results",
+    "playwright-report"
+  ]
 }

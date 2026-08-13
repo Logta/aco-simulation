@@ -16,7 +16,7 @@ export const ACOSimulation = () => {
     if (isInitialized.current) return;
     isInitialized.current = true;
 
-    const wasmUrl = new URL("../../wasm/aco_core.wasm", import.meta.url);
+    const wasmUrl = new URL("../../../../wasm-core/dist/aco_core.wasm", import.meta.url);
     loadAdapter(wasmUrl)
       .then(() => {
         initializeSimulation();
@@ -55,11 +55,12 @@ export const ACOSimulation = () => {
 
 const ACOSimulationReady = () => {
   useSimulation();
+  const { worldWidth, worldHeight } = useSimulationStore();
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 p-6 min-h-screen bg-gray-100">
       <div className="flex-1 flex items-center justify-center">
-        <SimulationCanvas width={800} height={600} />
+        <SimulationCanvas width={worldWidth} height={worldHeight} />
       </div>
       <div className="w-full lg:w-96">
         <ControlPanel />

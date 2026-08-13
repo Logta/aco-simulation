@@ -80,3 +80,31 @@ pub fn decay(
 pub fn rng_create(seed : UInt) -> Rng {
   rng_new(seed)
 }
+
+// --- アロケータ ---
+//
+// wasm(非GC)ターゲットでは`FixedArray[...]`は線形メモリ上の参照カウント
+// オブジェクトであり、JS側から直接構築することはできない。JSは以下の関数で
+// 空の配列を確保し、戻り値のi32ポインタに対して
+// `new Float64Array(memory.buffer, ptr, len)`等のビューを張って初期値を
+// 書き込んでから`step()`/`decay()`に渡す。
+// これが無いと`step()`はJSから呼び出し不能になる(MoonBit側のテストは
+// FixedArrayをネイティブに構築できるため、この欠落を検出できない)。
+
+///|
+#export_name("alloc_f64")
+pub fn alloc_f64(len : Int) -> FixedArray[Double] {
+  FixedArray::make(len, 0.0)
+}
+
+///|
+#export_name("alloc_i32")
+pub fn alloc_i32(len : Int) -> FixedArray[Int] {
+  FixedArray::make(len, 0)
+}
+
+///|
+#export_name("alloc_u8")
+pub fn alloc_u8(len : Int) -> FixedArray[Byte] {
+  FixedArray::make(len, (0 : Byte))
+}

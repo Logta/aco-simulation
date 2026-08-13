@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import type { Position } from "../lib/aco/types";
 import {
   initializeSimulation as adapterInitializeSimulation,
   reinitializeAnts,
@@ -8,6 +7,7 @@ import {
   addRandomFoods as adapterAddRandomFoods,
   resetAll,
 } from "../lib/aco-wasm/adapter";
+import type { Position } from "../lib/aco-wasm/adapter";
 
 type SimulationState = {
   nest: Position;

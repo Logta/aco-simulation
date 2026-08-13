@@ -1,4 +1,4 @@
-import type { Position } from "@/lib/aco/types";
+export type Position = { x: number; y: number };
 
 const CELL_SIZE = 10;
 

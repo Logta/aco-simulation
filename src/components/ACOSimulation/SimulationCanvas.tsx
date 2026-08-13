@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useSimulationStore } from "@/stores/simulation.store";
 import { getRenderView } from "@/lib/aco-wasm/adapter";
-import type { Position } from "@/lib/aco/types";
+import type { Position } from "@/lib/aco-wasm/adapter";
 
 type SimulationCanvasProps = {
   width: number;

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { loadAdapterFromBytes, initializeSimulation, getRenderView } from "./adapter";
+import { loadAdapterFromBytes, initializeSimulation, getRenderView, reinitializeAnts, addFood, addRandomFoods, resetAll } from "./adapter";
 
 const wasmBytes = readFileSync(resolve(import.meta.dirname, "../../wasm/aco_core.wasm"));
 
@@ -48,5 +48,64 @@ describe("getRenderView", () => {
     const second = getRenderView();
     expect(first.antX).not.toBe(second.antX);
     expect(first.antX[0]).toBe(second.antX[0]);
+  });
+});
+
+describe("reinitializeAnts", () => {
+  it("replaces ants and clears pheromones, but preserves existing food", () => {
+    initializeSimulation({ antCount: 3, nest: { x: 400, y: 300 }, worldWidth: 800, worldHeight: 600 });
+    addFood({ x: 100, y: 100 });
+
+    reinitializeAnts(7);
+
+    const view = getRenderView();
+    expect(view.antCount).toBe(7);
+    expect(view.foodCount).toBe(1);
+    expect(view.foodX[0]).toBe(100);
+  });
+});
+
+describe("addFood", () => {
+  it("appends a food entry preserving previously added ones", () => {
+    initializeSimulation({ antCount: 1, nest: { x: 400, y: 300 }, worldWidth: 800, worldHeight: 600 });
+
+    addFood({ x: 10, y: 20 });
+    addFood({ x: 30, y: 40 });
+
+    const view = getRenderView();
+    expect(view.foodCount).toBe(2);
+    expect(Array.from(view.foodX)).toEqual([10, 30]);
+    expect(Array.from(view.foodY)).toEqual([20, 40]);
+    expect(view.foodAmount[0]).toBe(100);
+  });
+});
+
+describe("addRandomFoods", () => {
+  it("adds the requested number of foods within world bounds", () => {
+    initializeSimulation({ antCount: 1, nest: { x: 400, y: 300 }, worldWidth: 800, worldHeight: 600 });
+
+    addRandomFoods(5);
+
+    const view = getRenderView();
+    expect(view.foodCount).toBe(5);
+    for (let i = 0; i < 5; i++) {
+      expect(view.foodX[i]).toBeGreaterThanOrEqual(0);
+      expect(view.foodX[i]).toBeLessThanOrEqual(800);
+      expect(view.foodAmount[i]).toBeGreaterThanOrEqual(50);
+      expect(view.foodAmount[i]).toBeLessThanOrEqual(150);
+    }
+  });
+});
+
+describe("resetAll", () => {
+  it("clears food and reinitializes ants/pheromones", () => {
+    initializeSimulation({ antCount: 3, nest: { x: 400, y: 300 }, worldWidth: 800, worldHeight: 600 });
+    addFood({ x: 10, y: 20 });
+
+    resetAll({ antCount: 9, nest: { x: 400, y: 300 }, worldWidth: 800, worldHeight: 600 });
+
+    const view = getRenderView();
+    expect(view.antCount).toBe(9);
+    expect(view.foodCount).toBe(0);
   });
 });

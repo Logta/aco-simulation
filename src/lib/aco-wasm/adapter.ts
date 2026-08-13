@@ -82,6 +82,9 @@ const getState = (): AdapterState => {
 const f64 = (ptr: number, len: number): Float64Array =>
   new Float64Array(getState().wasm.memory.buffer, ptr, len);
 
+const i32 = (ptr: number, len: number): Int32Array =>
+  new Int32Array(getState().wasm.memory.buffer, ptr, len);
+
 const u8 = (ptr: number, len: number): Uint8Array =>
   new Uint8Array(getState().wasm.memory.buffer, ptr, len);
 
@@ -188,6 +191,92 @@ export const initializeSimulation = (config: SimulationInitConfig): void => {
   s.worldWidth = config.worldWidth;
   s.worldHeight = config.worldHeight;
   s.nest = config.nest;
+};
+
+/** アリだけを再生成し、フェロモングリッドをクリアする。食料は変更しない。 */
+export const reinitializeAnts = (antCount: number): void => {
+  const s = getState();
+  const { wasm } = s;
+  const gridCells = s.gridWidth * s.gridHeight;
+
+  const antXPtr = wasm.alloc_f64(antCount);
+  const antYPtr = wasm.alloc_f64(antCount);
+  const antDirPtr = wasm.alloc_f64(antCount);
+  const antHasFoodPtr = wasm.alloc_u8(antCount);
+  const antTargetPtr = wasm.alloc_i32(antCount);
+  const antFoodAmountPtr = wasm.alloc_f64(antCount);
+  const pheromoneToFoodPtr = wasm.alloc_f64(gridCells);
+  const pheromoneToNestPtr = wasm.alloc_f64(gridCells);
+
+  const x = new Float64Array(wasm.memory.buffer, antXPtr, antCount);
+  const y = new Float64Array(wasm.memory.buffer, antYPtr, antCount);
+  const direction = new Float64Array(wasm.memory.buffer, antDirPtr, antCount);
+  const hasFood = new Uint8Array(wasm.memory.buffer, antHasFoodPtr, antCount);
+  const targetFoodIndex = new Int32Array(wasm.memory.buffer, antTargetPtr, antCount);
+  const foodAmount = new Float64Array(wasm.memory.buffer, antFoodAmountPtr, antCount);
+
+  for (let i = 0; i < antCount; i++) {
+    x[i] = s.nest.x;
+    y[i] = s.nest.y;
+    direction[i] = Math.random() * Math.PI * 2;
+    hasFood[i] = 0;
+    targetFoodIndex[i] = -1;
+    foodAmount[i] = -1;
+  }
+
+  s.antCount = antCount;
+  s.ant = {
+    x: antXPtr,
+    y: antYPtr,
+    direction: antDirPtr,
+    hasFood: antHasFoodPtr,
+    targetFoodIndex: antTargetPtr,
+    foodAmount: antFoodAmountPtr,
+  };
+  s.pheromone = { toFood: pheromoneToFoodPtr, toNest: pheromoneToNestPtr };
+};
+
+/** 食料を1件追加する(生存中の食料はそのまま新しい配列にコピーする)。 */
+export const addFood = (position: Position, amount = 100): void => {
+  const s = getState();
+  const { wasm } = s;
+  const newCount = s.foodCount + 1;
+
+  const newXPtr = wasm.alloc_f64(newCount);
+  const newYPtr = wasm.alloc_f64(newCount);
+  const newAmountPtr = wasm.alloc_f64(newCount);
+
+  const newX = new Float64Array(wasm.memory.buffer, newXPtr, newCount);
+  const newY = new Float64Array(wasm.memory.buffer, newYPtr, newCount);
+  const newAmount = new Float64Array(wasm.memory.buffer, newAmountPtr, newCount);
+
+  if (s.foodCount > 0) {
+    newX.set(f64(s.food.x, s.foodCount));
+    newY.set(f64(s.food.y, s.foodCount));
+    newAmount.set(f64(s.food.amount, s.foodCount));
+  }
+  newX[s.foodCount] = position.x;
+  newY[s.foodCount] = position.y;
+  newAmount[s.foodCount] = amount;
+
+  s.food = { x: newXPtr, y: newYPtr, amount: newAmountPtr };
+  s.foodCount = newCount;
+};
+
+/** ランダムな位置・量の食料をまとめて追加する。 */
+export const addRandomFoods = (count: number): void => {
+  const s = getState();
+  for (let i = 0; i < count; i++) {
+    addFood(
+      { x: Math.random() * s.worldWidth, y: Math.random() * s.worldHeight },
+      50 + Math.random() * 100,
+    );
+  }
+};
+
+/** 全てを初期状態に戻す(食料も含む)。 */
+export const resetAll = (config: SimulationInitConfig): void => {
+  initializeSimulation(config);
 };
 
 export type RenderView = {

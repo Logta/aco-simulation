@@ -4,6 +4,7 @@
 - ステータス: 承認済み(実装計画へ移行)
 - Phase 0(既存TS実装のテスト強化): 完了 — `docs/superpowers/plans/2026-08-12-aco-core-phase0-test-hardening.md`
 - Phase 1 最小スパイク(wasm/wasm-gcターゲット検証): 完了 — `wasm`(非GC)採用確定(`moonbit-spike`/`moonbit-spike-2`ブランチ、`moonbit/aco_core/`)。zero-copyメモリアクセスの追加検証によりwasm-gcから変更
+- Plan A(MoonBitコアロジック移植): 完了 — `docs/superpowers/plans/2026-08-12-aco-core-moonbit-port.md`
 
 ## 背景・動機
 

@@ -1,5 +1,6 @@
-import { useEffect, useRef, useCallback, useMemo } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useSimulationStore } from "@/stores/simulation.store";
+import { getRenderView } from "@/lib/aco-wasm/adapter";
 import type { Position } from "@/lib/aco/types";
 
 type SimulationCanvasProps = {
@@ -18,7 +19,7 @@ export const SimulationCanvas = ({ width, height }: SimulationCanvasProps) => {
   const animationFrameRef = useRef<number>(0);
   const lastPheromoneUpdateRef = useRef<number>(0);
 
-  const { ants, foods, pheromones, nest, addFood } = useSimulationStore();
+  const { nest, addFood } = useSimulationStore();
 
   // オフスクリーンキャンバスの初期化（エラーハンドリング付き）
   useEffect(() => {
@@ -52,7 +53,6 @@ export const SimulationCanvas = ({ width, height }: SimulationCanvasProps) => {
       }
     } catch (error) {
       console.error("キャンバスの初期化中にエラーが発生しました:", error);
-      // フォールバック: オフスクリーンキャンバスなしで動作
       offscreenCanvasRef.current = null;
       offscreenCtxRef.current = null;
       pheromoneCanvasRef.current = null;
@@ -61,25 +61,6 @@ export const SimulationCanvas = ({ width, height }: SimulationCanvasProps) => {
       staticCtxRef.current = null;
     }
   }, [width, height]);
-
-  // Spatial indexing for pheromones
-  const pheromoneGrid = useMemo(() => {
-    const gridSize = 50;
-    const grid = new Map<string, Array<typeof pheromones extends Map<any, infer V> ? V : never>>();
-
-    pheromones.forEach((pheromone) => {
-      const gridX = Math.floor(pheromone.position.x / gridSize);
-      const gridY = Math.floor(pheromone.position.y / gridSize);
-      const key = `${gridX},${gridY}`;
-
-      if (!grid.has(key)) {
-        grid.set(key, []);
-      }
-      grid.get(key)!.push(pheromone);
-    });
-
-    return grid;
-  }, [pheromones]);
 
   const drawCircle = useCallback(
     (
@@ -96,99 +77,99 @@ export const SimulationCanvas = ({ width, height }: SimulationCanvasProps) => {
     [],
   );
 
+  const drawPheromoneGrid = useCallback(
+    (
+      ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+      grid: Float64Array,
+      gridWidth: number,
+      cellSize: number,
+      color: string,
+      globalAlphaScale: number,
+    ) => {
+      for (let i = 0; i < grid.length; i++) {
+        const raw = grid[i];
+        if (raw <= 0) continue;
+        const intensity = Math.min(raw / 100, 1);
+        if (intensity < 0.05) continue;
+
+        const gx = i % gridWidth;
+        const gy = Math.floor(i / gridWidth);
+        const cx = gx * cellSize + cellSize / 2;
+        const cy = gy * cellSize + cellSize / 2;
+        const radius = 12 + intensity * 15;
+
+        ctx.globalAlpha = intensity * globalAlphaScale;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    },
+    [],
+  );
+
   const drawPheromones = useCallback(
-    (ctx: OffscreenCanvasRenderingContext2D) => {
+    (ctx: OffscreenCanvasRenderingContext2D, view: ReturnType<typeof getRenderView>) => {
       const now = performance.now();
 
-      // Only update pheromone layer every 100ms
+      // フェロモン層は100msごとにのみ更新する
       if (now - lastPheromoneUpdateRef.current < 100) {
         return false;
       }
       lastPheromoneUpdateRef.current = now;
 
       ctx.clearRect(0, 0, width, height);
+      drawPheromoneGrid(ctx, view.pheromoneToFood, view.gridWidth, view.cellSize, "#00ff00", 1);
+      drawPheromoneGrid(ctx, view.pheromoneToNest, view.gridWidth, view.cellSize, "#0096ff", 1);
 
-      // Use pre-sorted pheromones from spatial index
-      pheromoneGrid.forEach((pheromonesInCell) => {
-        // Sort by intensity within each cell
-        const sorted = pheromonesInCell.sort((a, b) => a.intensity - b.intensity);
-
-        sorted.forEach((pheromone) => {
-          const intensity = Math.min(pheromone.intensity / 100, 1);
-          if (intensity < 0.05) return;
-
-          const radius = 12 + intensity * 15;
-
-          // Use simpler rendering for better performance
-          ctx.globalAlpha = intensity;
-          if (pheromone.type === "toFood") {
-            ctx.fillStyle = "#00ff00";
-          } else {
-            ctx.fillStyle = "#0096ff";
-          }
-
-          ctx.beginPath();
-          ctx.arc(pheromone.position.x, pheromone.position.y, radius, 0, Math.PI * 2);
-          ctx.fill();
-        });
-      });
-
-      ctx.globalAlpha = 1;
       return true;
     },
-    [pheromoneGrid, width, height],
+    [drawPheromoneGrid, width, height],
   );
 
   const drawFoods = useCallback(
-    (ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D) => {
-      // Batch render all foods with same color
+    (
+      ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+      view: ReturnType<typeof getRenderView>,
+    ) => {
       ctx.fillStyle = "#FFA500";
-      foods.forEach((food) => {
-        const size = Math.max(3, food.amount / 10);
+      for (let i = 0; i < view.foodCount; i++) {
+        const size = Math.max(3, view.foodAmount[i] / 10);
         ctx.beginPath();
-        ctx.arc(food.position.x, food.position.y, size, 0, Math.PI * 2);
+        ctx.arc(view.foodX[i], view.foodY[i], size, 0, Math.PI * 2);
         ctx.fill();
-      });
+      }
     },
-    [foods],
+    [],
   );
 
   const drawAnts = useCallback(
-    (ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D) => {
-      // Batch render ants by state
-      const antsWithFood = ants.filter((ant) => ant.hasFood);
-      const antsWithoutFood = ants.filter((ant) => !ant.hasFood);
-
-      // Draw ants without food
-      ctx.fillStyle = "#FFFFFF";
-      antsWithoutFood.forEach((ant) => {
+    (
+      ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+      view: ReturnType<typeof getRenderView>,
+    ) => {
+      // hasFoodで色分けしつつ1パスで描画する
+      for (let i = 0; i < view.antCount; i++) {
+        ctx.fillStyle = view.antHasFood[i] === 1 ? "#FF6B6B" : "#FFFFFF";
         ctx.beginPath();
-        ctx.arc(ant.position.x, ant.position.y, 3, 0, Math.PI * 2);
+        ctx.arc(view.antX[i], view.antY[i], 3, 0, Math.PI * 2);
         ctx.fill();
-      });
+      }
 
-      // Draw ants with food
-      ctx.fillStyle = "#FF6B6B";
-      antsWithFood.forEach((ant) => {
-        ctx.beginPath();
-        ctx.arc(ant.position.x, ant.position.y, 3, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
-      // Draw ant directions
       ctx.strokeStyle = "#CCCCCC";
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ants.forEach((ant) => {
-        ctx.moveTo(ant.position.x, ant.position.y);
+      for (let i = 0; i < view.antCount; i++) {
+        ctx.moveTo(view.antX[i], view.antY[i]);
         ctx.lineTo(
-          ant.position.x + Math.cos(ant.direction) * 8,
-          ant.position.y + Math.sin(ant.direction) * 8,
+          view.antX[i] + Math.cos(view.antDirection[i]) * 8,
+          view.antY[i] + Math.sin(view.antDirection[i]) * 8,
         );
-      });
+      }
       ctx.stroke();
     },
-    [ants],
+    [],
   );
 
   const drawNest = useCallback(
@@ -212,7 +193,6 @@ export const SimulationCanvas = ({ width, height }: SimulationCanvasProps) => {
     drawNest(ctx);
   }, [width, height, drawNest]);
 
-  // Draw static elements once
   useEffect(() => {
     drawStatic();
   }, [drawStatic]);
@@ -226,63 +206,37 @@ export const SimulationCanvas = ({ width, height }: SimulationCanvasProps) => {
 
     if (!canvas || !mainCtx) return;
 
-    // Use offscreen canvas if available
-    if (offscreenCtx && pheromoneCtx && staticCtx) {
-      // Clear offscreen canvas
-      offscreenCtx.clearRect(0, 0, width, height);
+    const view = getRenderView();
 
-      // Draw static background
+    if (offscreenCtx && pheromoneCtx && staticCtx) {
+      offscreenCtx.clearRect(0, 0, width, height);
       offscreenCtx.drawImage(staticCanvasRef.current!, 0, 0);
 
-      // Update and draw pheromones (cached)
-      if (drawPheromones(pheromoneCtx)) {
-        // Only redraw if updated
-        offscreenCtx.globalAlpha = 0.7;
-        offscreenCtx.drawImage(pheromoneCanvasRef.current!, 0, 0);
-        offscreenCtx.globalAlpha = 1;
-      } else {
-        // Use cached pheromone layer
-        offscreenCtx.globalAlpha = 0.7;
-        offscreenCtx.drawImage(pheromoneCanvasRef.current!, 0, 0);
-        offscreenCtx.globalAlpha = 1;
-      }
+      drawPheromones(pheromoneCtx, view);
+      offscreenCtx.globalAlpha = 0.7;
+      offscreenCtx.drawImage(pheromoneCanvasRef.current!, 0, 0);
+      offscreenCtx.globalAlpha = 1;
 
-      // Draw dynamic elements
-      drawFoods(offscreenCtx);
-      drawAnts(offscreenCtx);
+      drawFoods(offscreenCtx, view);
+      drawAnts(offscreenCtx, view);
 
-      // Copy to main canvas
       mainCtx.clearRect(0, 0, width, height);
       mainCtx.drawImage(offscreenCanvasRef.current!, 0, 0);
     } else {
-      // Fallback for browsers without OffscreenCanvas
       mainCtx.clearRect(0, 0, width, height);
       mainCtx.fillStyle = "#2a2a2a";
       mainCtx.fillRect(0, 0, width, height);
 
-      // Draw all elements directly
-      pheromoneGrid.forEach((pheromonesInCell) => {
-        pheromonesInCell.forEach((pheromone) => {
-          const intensity = Math.min(pheromone.intensity / 100, 1);
-          if (intensity < 0.05) return;
-
-          const radius = 12 + intensity * 15;
-          mainCtx.globalAlpha = intensity * 0.7;
-          mainCtx.fillStyle = pheromone.type === "toFood" ? "#00ff00" : "#0096ff";
-          mainCtx.beginPath();
-          mainCtx.arc(pheromone.position.x, pheromone.position.y, radius, 0, Math.PI * 2);
-          mainCtx.fill();
-        });
-      });
-      mainCtx.globalAlpha = 1;
+      drawPheromoneGrid(mainCtx, view.pheromoneToFood, view.gridWidth, view.cellSize, "#00ff00", 0.7);
+      drawPheromoneGrid(mainCtx, view.pheromoneToNest, view.gridWidth, view.cellSize, "#0096ff", 0.7);
 
       drawNest(mainCtx);
-      drawFoods(mainCtx);
-      drawAnts(mainCtx);
+      drawFoods(mainCtx, view);
+      drawAnts(mainCtx, view);
     }
 
     animationFrameRef.current = requestAnimationFrame(render);
-  }, [width, height, drawPheromones, drawNest, drawFoods, drawAnts, pheromoneGrid]);
+  }, [width, height, drawPheromones, drawPheromoneGrid, drawNest, drawFoods, drawAnts]);
 
   useEffect(() => {
     animationFrameRef.current = requestAnimationFrame(render);

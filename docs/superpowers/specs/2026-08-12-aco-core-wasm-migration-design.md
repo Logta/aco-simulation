@@ -5,6 +5,7 @@
 - Phase 0(既存TS実装のテスト強化): 完了 — `docs/superpowers/plans/2026-08-12-aco-core-phase0-test-hardening.md`
 - Phase 1 最小スパイク(wasm/wasm-gcターゲット検証): 完了 — `wasm`(非GC)採用確定(`moonbit-spike`/`moonbit-spike-2`ブランチ、`moonbit/aco_core/`)。zero-copyメモリアクセスの追加検証によりwasm-gcから変更
 - Plan A(MoonBitコアロジック移植): 完了 — `docs/superpowers/plans/2026-08-12-aco-core-moonbit-port.md`
+- Plan B(JS側統合): 完了 — `docs/superpowers/plans/2026-08-13-aco-core-js-integration.md`。シミュレーションが実際にWASM経由でブラウザ上で動作する状態
 
 ## 背景・動機
 
@@ -49,10 +50,10 @@ WASM境界越えのコストは呼び出し回数に比例して効く。案Aな
 
 ## データレイアウト
 
-- **Ants**: `Float64Array`(x, y, direction)+ `Uint8Array`(hasFood)+ `Int32Array`(targetFoodIndex、-1でnull)+ `Float64Array`(foodAmount、NaNでnull)
+- **Ants**: `Float64Array`(x, y, direction)+ `Uint8Array`(hasFood)+ `Int32Array`(targetFoodIndex、-1でnull)+ `Float64Array`(foodAmount、-1.0でnull)
 - **Foods**: `Float64Array`(x, y, amount)。追加削除は低頻度操作なのでその都度リサイズ
-- **Pheromones**: 現行の`createPheromoneKey`が10px格子キーであることを利用し、`(worldWidth/10) × (worldHeight/10)`の密な`Float32Array`をtoFood/toNest用に2枚。world サイズ変更時のみリサイズ
-- **ID**: 文字列IDはJS側のみで保持し、ホットパスはindexで完結。Zustandの`removeFood(id)`等はindexマッピング経由で変換
+- **Pheromones**: 現行の`createPheromoneKey`が10px格子キーであることを利用し、`(worldWidth/10) × (worldHeight/10)`の密な`Float64Array`をtoFood/toNest用に2枚。world サイズ変更時のみリサイズ(実装は`FixedArray[Double]`→JS側`Float64Array`。設計時点では`Float32Array`を想定していたが、Plan Aの実装に合わせて修正)
+- **ID**: アリ・食料ともに文字列IDは持たない。個体を外部から参照するコードが存在しないため、全てindexベースで扱う(Plan B実装時にgrepで確認し、より単純な設計へ変更)
 
 ### 乱数
 
@@ -92,7 +93,7 @@ WASM境界越えのコストは呼び出し回数に比例して効く。案Aな
 - `adapter.getRenderView()`が以下を返す(すべて`instance.exports.memory.buffer`上のzero-copyビュー):
   - アリ: `antX` / `antY` / `antDirection`(`Float64Array`)、`antHasFood`(`Uint8Array`)、`antCount`
   - フード: `foodX` / `foodY` / `foodAmount`(`Float64Array`)、`foodCount`
-  - フェロモン: `pheromoneToFood` / `pheromoneToNest`(`Float32Array`、密グリッド)、`gridWidth` / `gridHeight` / `cellSize`
+  - フェロモン: `pheromoneToFood` / `pheromoneToNest`(`Float64Array`、密グリッド)、`gridWidth` / `gridHeight` / `cellSize`
 - **既存コードの副次的な簡略化**: 現在`SimulationCanvas.tsx`は毎フレーム`pheromones`(Map)から`useMemo`で独自の空間インデックス(`pheromoneGrid`)を再構築しているが、フェロモンがWASM側で最初から密なグリッド配列になるため、この再インデックス処理は丸ごと不要になり削除できる
 - 副次的に、`drawAnts`が毎フレーム`ants.filter()`で配列を2回複製している箇所も、生のtyped arrayを1パス走査してhasFoodで分岐する形に置き換えられ、無駄なアロケーションが減る
 - **注意(WASMメモリ成長との整合性)**: WASM linear memoryが`grow`すると既存の`ArrayBuffer`はdetachされ、古いtyped arrayビューは無効になる。そのため`getRenderView()`は呼び出しのたびに(=毎フレーム)新しいビューを取得する実装とし、フレームをまたいでビューをキャッシュしない

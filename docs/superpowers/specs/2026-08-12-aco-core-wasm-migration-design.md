@@ -106,6 +106,7 @@ WASM境界越えのコストは呼び出し回数に比例して効く。案Aな
 ## 既存TS実装の扱い
 
 パリティ確認後に削除する。二重実装を恒久的に残さず、シンプルに保つ。
+(2026-08-13時点でPlan Cにより削除完了。`Position`型は`src/lib/aco-wasm/adapter.ts`に移設。)
 
 ## テスト戦略
 
@@ -149,4 +150,4 @@ WASM境界越えのコストは呼び出し回数に比例して効く。案Aな
 5. `movement`/`collision`のポート+テスト
 6. `pathfinding`/`ant-behavior`統合、`step()`実装
 7. `adapter.ts`実装(描画用read viewを含む)、`useSimulation.ts`/`SimulationCanvas.tsx`置き換え
-8. パリティ確認 → 旧TS実装削除
+8. パリティ確認 → 旧TS実装削除 — 完了(Plan C: `docs/superpowers/plans/2026-08-13-aco-core-legacy-ts-removal.md`)

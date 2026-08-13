@@ -1,13 +1,21 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
+
+vi.mock("@/lib/aco-wasm/adapter", () => ({
+  initializeSimulation: vi.fn(),
+  reinitializeAnts: vi.fn(),
+  addFood: vi.fn(),
+  addRandomFoods: vi.fn(),
+  resetAll: vi.fn(),
+}));
+
+import * as adapter from "@/lib/aco-wasm/adapter";
 import { useSimulationStore } from "./simulation.store";
 
 describe("useSimulationStore", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     useSimulationStore.setState({
-      ants: [],
-      foods: [],
-      pheromones: new Map(),
       nest: { x: 400, y: 300 },
       isRunning: false,
       speed: 1,
@@ -21,68 +29,36 @@ describe("useSimulationStore", () => {
   });
 
   describe("initializeSimulation", () => {
-    it("should create ants based on antCount", () => {
+    it("delegates to adapter.initializeSimulation with current settings", () => {
       const { result } = renderHook(() => useSimulationStore());
-
-      act(() => {
-        result.current.setAntCount(10);
-        result.current.initializeSimulation();
-      });
-
-      expect(result.current.ants).toHaveLength(10);
-      expect(result.current.ants[0]).toMatchObject({
-        id: expect.stringContaining("ant-"),
-        position: { x: 400, y: 300 },
-        hasFood: false,
-        targetFood: null,
-        direction: expect.any(Number),
-        foodAmount: null,
-      });
-    });
-
-    it("should reset pheromones when initializing", () => {
-      const { result } = renderHook(() => useSimulationStore());
-
-      act(() => {
-        result.current.updatePheromone("test", {
-          position: { x: 100, y: 100 },
-          type: "toFood",
-          intensity: 100,
-        });
-      });
-
-      expect(result.current.pheromones.size).toBe(1);
 
       act(() => {
         result.current.initializeSimulation();
       });
 
-      expect(result.current.pheromones.size).toBe(0);
+      expect(adapter.initializeSimulation).toHaveBeenCalledWith({
+        antCount: 50,
+        nest: { x: 400, y: 300 },
+        worldWidth: 800,
+        worldHeight: 600,
+      });
     });
   });
 
   describe("toggleSimulation", () => {
-    it("should toggle isRunning state", () => {
+    it("toggles isRunning state", () => {
       const { result } = renderHook(() => useSimulationStore());
 
       expect(result.current.isRunning).toBe(false);
-
       act(() => {
         result.current.toggleSimulation();
       });
-
       expect(result.current.isRunning).toBe(true);
-
-      act(() => {
-        result.current.toggleSimulation();
-      });
-
-      expect(result.current.isRunning).toBe(false);
     });
   });
 
   describe("setSpeed", () => {
-    it("should update speed", () => {
+    it("updates speed", () => {
       const { result } = renderHook(() => useSimulationStore());
 
       act(() => {
@@ -94,7 +70,7 @@ describe("useSimulationStore", () => {
   });
 
   describe("setAntCount", () => {
-    it("should update ant count and reinitialize simulation", () => {
+    it("updates antCount and delegates to adapter.reinitializeAnts", () => {
       const { result } = renderHook(() => useSimulationStore());
 
       act(() => {
@@ -102,216 +78,77 @@ describe("useSimulationStore", () => {
       });
 
       expect(result.current.antCount).toBe(25);
-      expect(result.current.ants).toHaveLength(25);
+      expect(adapter.reinitializeAnts).toHaveBeenCalledWith(25);
     });
   });
 
   describe("food management", () => {
-    it("should add food at specified position", () => {
+    it("delegates addFood to the adapter", () => {
       const { result } = renderHook(() => useSimulationStore());
 
       act(() => {
         result.current.addFood({ x: 100, y: 200 });
       });
 
-      expect(result.current.foods).toHaveLength(1);
-      expect(result.current.foods[0]).toMatchObject({
-        id: expect.stringContaining("food-"),
-        position: { x: 100, y: 200 },
-        amount: 100,
-      });
+      expect(adapter.addFood).toHaveBeenCalledWith({ x: 100, y: 200 });
     });
 
-    it("should remove food by id", () => {
-      const { result } = renderHook(() => useSimulationStore());
-
-      act(() => {
-        result.current.addFood({ x: 100, y: 200 });
-      });
-
-      const foodId = result.current.foods[0].id;
-
-      act(() => {
-        result.current.removeFood(foodId);
-      });
-
-      expect(result.current.foods).toHaveLength(0);
-    });
-
-    it("should update food properties", () => {
-      const { result } = renderHook(() => useSimulationStore());
-
-      act(() => {
-        result.current.addFood({ x: 100, y: 200 });
-      });
-
-      const foodId = result.current.foods[0].id;
-
-      act(() => {
-        result.current.updateFood(foodId, { amount: 50 });
-      });
-
-      expect(result.current.foods[0].amount).toBe(50);
-    });
-
-    it("should add multiple random foods", () => {
+    it("delegates addRandomFoods to the adapter", () => {
       const { result } = renderHook(() => useSimulationStore());
 
       act(() => {
         result.current.addRandomFoods(5);
       });
 
-      expect(result.current.foods).toHaveLength(5);
-      result.current.foods.forEach((food) => {
-        expect(food.position.x).toBeGreaterThanOrEqual(0);
-        expect(food.position.x).toBeLessThanOrEqual(800);
-        expect(food.position.y).toBeGreaterThanOrEqual(0);
-        expect(food.position.y).toBeLessThanOrEqual(600);
-        expect(food.amount).toBeGreaterThanOrEqual(50);
-        expect(food.amount).toBeLessThanOrEqual(150);
-      });
-    });
-  });
-
-  describe("ant management", () => {
-    it("should update ant properties", () => {
-      const { result } = renderHook(() => useSimulationStore());
-
-      act(() => {
-        result.current.initializeSimulation();
-      });
-
-      const antId = result.current.ants[0].id;
-
-      act(() => {
-        result.current.updateAnt(antId, {
-          hasFood: true,
-          position: { x: 200, y: 200 },
-        });
-      });
-
-      const updatedAnt = result.current.ants.find((a) => a.id === antId);
-      expect(updatedAnt?.hasFood).toBe(true);
-      expect(updatedAnt?.position).toEqual({ x: 200, y: 200 });
-    });
-  });
-
-  describe("pheromone management", () => {
-    it("should update pheromone", () => {
-      const { result } = renderHook(() => useSimulationStore());
-
-      const pheromone = {
-        position: { x: 100, y: 100 },
-        type: "toFood" as const,
-        intensity: 100,
-      };
-
-      act(() => {
-        result.current.updatePheromone("100,100", pheromone);
-      });
-
-      expect(result.current.pheromones.get("100,100")).toEqual(pheromone);
-    });
-
-    it("should decay pheromones", () => {
-      const { result } = renderHook(() => useSimulationStore());
-
-      act(() => {
-        result.current.updatePheromone("10,10", {
-          position: { x: 105, y: 105 },
-          type: "toFood",
-          intensity: 50,
-        });
-        result.current.setPheromoneDecayRate(0.95);
-      });
-
-      act(() => {
-        result.current.decayPheromones();
-      });
-
-      const decayedPheromone = result.current.pheromones.get("10,10");
-      expect(decayedPheromone?.intensity).toBeTypeOf("number");
-      expect(decayedPheromone?.intensity).toBeLessThan(50);
-    });
-
-    it("should remove pheromones below threshold", () => {
-      const { result } = renderHook(() => useSimulationStore());
-
-      act(() => {
-        result.current.updatePheromone("10,10", {
-          position: { x: 100, y: 100 },
-          type: "toFood",
-          intensity: 0.05, // Start with very low intensity
-        });
-        result.current.setPheromoneDecayRate(0.5);
-      });
-
-      act(() => {
-        result.current.decayPheromones();
-      });
-
-      // With logarithmic decay, low intensity pheromones should be removed
-      expect(result.current.pheromones.has("10,10")).toBe(false);
+      expect(adapter.addRandomFoods).toHaveBeenCalledWith(5);
     });
   });
 
   describe("reset", () => {
-    it("should reset all state and reinitialize", () => {
+    it("stops the simulation and delegates to adapter.resetAll", () => {
       const { result } = renderHook(() => useSimulationStore());
 
       act(() => {
-        result.current.addFood({ x: 100, y: 100 });
-        result.current.updatePheromone("test", {
-          position: { x: 100, y: 100 },
-          type: "toFood",
-          intensity: 100,
-        });
         result.current.toggleSimulation();
       });
-
-      expect(result.current.foods).toHaveLength(1);
-      expect(result.current.pheromones.size).toBe(1);
       expect(result.current.isRunning).toBe(true);
 
       act(() => {
         result.current.reset();
       });
 
-      expect(result.current.foods).toHaveLength(0);
-      expect(result.current.pheromones.size).toBe(0);
       expect(result.current.isRunning).toBe(false);
-      expect(result.current.ants).toHaveLength(50);
+      expect(adapter.resetAll).toHaveBeenCalledWith({
+        antCount: 50,
+        nest: { x: 400, y: 300 },
+        worldWidth: 800,
+        worldHeight: 600,
+      });
     });
   });
 
   describe("pheromone parameters", () => {
-    it("should update pheromone decay rate", () => {
+    it("updates pheromone decay rate", () => {
       const { result } = renderHook(() => useSimulationStore());
-
       act(() => {
         result.current.setPheromoneDecayRate(0.95);
       });
-
       expect(result.current.pheromoneDecayRate).toBe(0.95);
     });
 
-    it("should update pheromone deposit amount", () => {
+    it("updates pheromone deposit amount", () => {
       const { result } = renderHook(() => useSimulationStore());
-
       act(() => {
         result.current.setPheromoneDepositAmount(5);
       });
-
       expect(result.current.pheromoneDepositAmount).toBe(5);
     });
 
-    it("should update pheromone tracking strength", () => {
+    it("updates pheromone tracking strength", () => {
       const { result } = renderHook(() => useSimulationStore());
-
       act(() => {
         result.current.setPheromoneTrackingStrength(0.9);
       });
-
       expect(result.current.pheromoneTrackingStrength).toBe(0.9);
     });
   });

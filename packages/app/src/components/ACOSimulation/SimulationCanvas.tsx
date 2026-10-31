@@ -197,7 +197,8 @@ export const SimulationCanvas = ({ width, height }: SimulationCanvasProps) => {
     drawStatic();
   }, [drawStatic]);
 
-  const render = useCallback(() => {
+  // 自身を requestAnimationFrame に渡すため、名前付き関数式にして自己参照する
+  const render = useCallback(function render() {
     const canvas = canvasRef.current;
     const mainCtx = canvas?.getContext("2d");
     const offscreenCtx = offscreenCtxRef.current;

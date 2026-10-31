@@ -15,8 +15,11 @@ export const useSimulation = () => {
   // effectを再実行してループを再起動したくない(cancel + reschedule のオーバーヘッドと、
   // それに伴うreact-hooks/exhaustive-deps警告を避けるため)。そこでrefに最新値を
   // 保持し、ループ内では常にref経由で最新のisRunning/speedを読む。
+  // ref の更新はレンダー中ではなくコミット後（effect 内）に行う。
   const simulationStateRef = useRef(simulationState);
-  simulationStateRef.current = simulationState;
+  useEffect(() => {
+    simulationStateRef.current = simulationState;
+  });
 
   useEffect(() => {
     const performSimulationStep = (currentTime: number) => {
